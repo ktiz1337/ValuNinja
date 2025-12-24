@@ -9,7 +9,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { analyzeProductCategory, searchProducts, getRegionInfo, resolveRegionFromLocation } from './services/geminiService';
 import { SearchState, AdUnit, Product, UserLocation } from './types';
 import { NinjaIcon } from './components/NinjaIcon';
-import { ShieldCheck, Award, Heart, ShieldAlert, ChevronLeft, X, Info, Terminal, Activity, Zap, Cpu, Globe } from 'lucide-react';
+import { ShieldCheck, Award, Heart, ShieldAlert, ChevronLeft, X, Info, Terminal, Activity, Zap, Cpu, Globe, AlertCircle } from 'lucide-react';
 
 type View = 'HOME' | 'PRIVACY' | 'ABOUT' | 'TERMS' | 'RESULTS' | 'ADMIN';
 
@@ -223,7 +223,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    console.log("ValuNinja Initializing...");
     const savedStats = localStorage.getItem('valuninja_stats');
     if (savedStats) setStats(JSON.parse(savedStats));
 
@@ -350,9 +349,10 @@ const App: React.FC = () => {
         };
       });
 
-    } catch (error) {
-      addLog(`Mission: Failed to acquire targets for "${query}".`, 'error');
-      setState(prev => ({ ...prev, stage: 'IDLE', error: "Mission failed. Check your connection and target specificity." }));
+    } catch (error: any) {
+      const errorMsg = error.message || "Unknown mission failure.";
+      addLog(`Mission Failure: ${errorMsg}`, 'error');
+      setState(prev => ({ ...prev, stage: 'IDLE', error: `Mission aborted: ${errorMsg}` }));
     }
   };
 
@@ -374,14 +374,14 @@ const App: React.FC = () => {
        setSources(res.sources);
        setState(prev => ({ ...prev, stage: 'RESULTS', results: res.products }));
        addLog(`Mission: Re-calibration complete. Targets updated.`, 'success');
-     } catch (e) {
+     } catch (e: any) {
        addLog(`Mission: Re-calibration failed.`, 'error');
-       setState(prev => ({ ...prev, stage: 'RESULTS', error: "Could not update results." }));
+       setState(prev => ({ ...prev, stage: 'RESULTS', error: `Re-calibration failed: ${e.message}` }));
      }
   }
 
   const resetSearch = () => {
-    setState(prev => ({ ...prev, stage: 'IDLE', query: '', results: [] }));
+    setState(prev => ({ ...prev, stage: 'IDLE', query: '', results: [], error: undefined }));
     setView('HOME');
   };
 
@@ -423,7 +423,23 @@ const App: React.FC = () => {
       </nav>
 
       <main className={`flex-grow transition-opacity duration-1000 ${isBooting ? 'opacity-0' : 'opacity-100'}`}>
-        {state.error && <div className="max-w-2xl mx-auto mt-6 p-4 bg-red-50 text-red-700 rounded-2xl border border-red-100 animate-in fade-in slide-in-from-top-2">{state.error}</div>}
+        {state.error && (
+          <div className="max-w-4xl mx-auto mt-10 px-6">
+            <div className="bg-rose-50 border border-rose-200 rounded-[2rem] p-8 md:p-12 flex flex-col md:flex-row items-center gap-8 shadow-xl animate-in fade-in slide-in-from-top-4">
+              <div className="w-16 h-16 bg-rose-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                <AlertCircle className="w-8 h-8 text-white" />
+              </div>
+              <div className="flex-1 text-center md:text-left space-y-2">
+                <h3 className="text-xl font-black text-rose-900 uppercase tracking-tight">Strike Aborted</h3>
+                <p className="text-rose-700 font-bold leading-relaxed">{state.error}</p>
+                <div className="flex flex-wrap gap-4 pt-4">
+                  <button onClick={resetSearch} className="px-6 py-2 bg-rose-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-800 transition-all">Reset Mission</button>
+                  <button onClick={() => setView('ADMIN')} className="px-6 py-2 bg-white border border-rose-200 text-rose-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all">Review System Logs</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {view === 'HOME' && (
           <Hero 

@@ -5,10 +5,10 @@ import { SpecAttribute, Product, AttributeType, PriceRange, RetailerLink, AdUnit
 // The API key is sourced exclusively from the environment.
 const getAI = () => {
   const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error("ValuNinja Error: API_KEY is missing from the environment.");
+  if (!apiKey || apiKey === "undefined" || apiKey.length < 5) {
+    throw new Error("API_KEY_MISSING: The system could not detect a valid API key in the environment.");
   }
-  return new GoogleGenAI({ apiKey: apiKey || "" });
+  return new GoogleGenAI({ apiKey });
 };
 
 /**
@@ -133,42 +133,47 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
   const ai = getAI();
   const region = getRegionInfo();
   
-  const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
-    contents: `Mission: Analyze "${query}" in ${region.countryName}. 
-    Define 4 key technical attributes to compare for this product/service. 
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Mission: Analyze "${query}" in ${region.countryName}. 
+      Define 4 key technical attributes to compare for this product/service. 
+      
+      Return strictly JSON:
+      {
+        "attributes": [{"key": "string", "label": "string", "type": "NUMBER|STRING|BOOLEAN", "defaultValue": "any"}],
+        "marketGuide": "2-3 sentences of tactical advice",
+        "suggestions": ["specific spec 1", "specific spec 2"],
+        "priceRange": {"min": number, "max": number, "currency": "string"},
+        "adUnits": [{"brand": "string", "headline": "string", "description": "string", "cta": "string"}]
+      }`,
+      config: { temperature: 0, responseMimeType: "application/json" }
+    });
+
+    const data = cleanAndParseJSON(response.text || '{}');
+    if (!data) throw new Error("CATEGORY_PARSE_ERROR: Failed to parse mission parameters.");
+
+    const attributes = (data.attributes || []).map((attr: any) => ({
+      ...attr,
+      type: attr.type === 'NUMBER' ? AttributeType.NUMBER : (attr.type === 'BOOLEAN' ? AttributeType.BOOLEAN : AttributeType.STRING)
+    }));
     
-    Return strictly JSON:
-    {
-      "attributes": [{"key": "string", "label": "string", "type": "NUMBER|STRING|BOOLEAN", "defaultValue": "any"}],
-      "marketGuide": "2-3 sentences of tactical advice",
-      "suggestions": ["specific spec 1", "specific spec 2"],
-      "priceRange": {"min": number, "max": number, "currency": "string"},
-      "adUnits": [{"brand": "string", "headline": "string", "description": "string", "cta": "string"}]
-    }`,
-    config: { temperature: 0, responseMimeType: "application/json" }
-  });
+    const defaultValues: Record<string, any> = { minPrice: 0, maxPrice: null, customQuery: '' };
+    attributes.forEach((a: any) => { if (a.defaultValue !== undefined) defaultValues[a.key] = a.defaultValue; });
 
-  const data = cleanAndParseJSON(response.text || '{}');
-  if (!data) throw new Error("Category analysis failed to return valid data.");
-
-  const attributes = (data.attributes || []).map((attr: any) => ({
-    ...attr,
-    type: attr.type === 'NUMBER' ? AttributeType.NUMBER : (attr.type === 'BOOLEAN' ? AttributeType.BOOLEAN : AttributeType.STRING)
-  }));
-  
-  const defaultValues: Record<string, any> = { minPrice: 0, maxPrice: null, customQuery: '' };
-  attributes.forEach((a: any) => { if (a.defaultValue !== undefined) defaultValues[a.key] = a.defaultValue; });
-
-  return { 
-    attributes, 
-    suggestions: data.suggestions || [], 
-    marketGuide: data.marketGuide || "Tactical scouting active.", 
-    defaultValues, 
-    priceRange: data.priceRange || { min: 0, max: 5000, currency: region.currencySymbol }, 
-    adUnits: data.adUnits || [], 
-    region 
-  };
+    return { 
+      attributes, 
+      suggestions: data.suggestions || [], 
+      marketGuide: data.marketGuide || "Tactical scouting active.", 
+      defaultValues, 
+      priceRange: data.priceRange || { min: 0, max: 5000, currency: region.currencySymbol }, 
+      adUnits: data.adUnits || [], 
+      region 
+    };
+  } catch (err: any) {
+    console.error("Category Analysis Error:", err);
+    throw new Error(err.message || "CATEGORY_ANALYSIS_FAILED");
+  }
 };
 
 export const searchProducts = async (query: string, userValues: Record<string, any>, location?: UserLocation, affiliates?: any): Promise<{ products: Product[], summary: string, sources: { title: string, uri: string }[], region: RegionInfo }> => {
@@ -209,7 +214,7 @@ export const searchProducts = async (query: string, userValues: Record<string, a
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', // Flash is faster and less prone to timeout for heavy grounding tasks
+      model: 'gemini-3-flash-preview', 
       contents: prompt,
       config: { 
         tools: [{ googleSearch: {} }],
@@ -219,7 +224,8 @@ export const searchProducts = async (query: string, userValues: Record<string, a
     });
 
     const data = cleanAndParseJSON(response.text || '');
-    if (!data || !Array.isArray(data.products)) throw new Error("Market scouting data corrupted.");
+    if (!data) throw new Error("SEARCH_PARSE_ERROR: Market intelligence data corrupted or unreadable.");
+    if (!Array.isArray(data.products)) throw new Error("EMPTY_RESULT: No tactical matches found for this query.");
 
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const groundingSources = chunks.map(c => {
@@ -259,6 +265,6 @@ export const searchProducts = async (query: string, userValues: Record<string, a
     return { products, summary: data.summary || "Strike results generated.", sources: groundingSources, region };
   } catch (error: any) { 
     console.error("Search Service Failure:", error);
-    throw error; 
+    throw new Error(error.message || "SEARCH_EXECUTION_FAILED"); 
   }
 };
