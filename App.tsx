@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Hero } from './components/Hero';
 import { ResultsView } from './components/ResultsView';
@@ -311,7 +312,7 @@ const App: React.FC = () => {
 
       setLoadingStep(state.location?.excludeRegionSpecific 
         ? "Scouring global online distribution networks..." 
-        : "Scrubbing Local Stores (50km) & Online Hubs...");
+        : "Scrubbing Local Sources (50km) & Online Hubs...");
       
       addLog(`Grounding: Initializing search grounding for ${query}...`, 'info');
         
@@ -455,6 +456,7 @@ const App: React.FC = () => {
             location={state.location}
             onLocationRequest={requestLocation}
             onLocationUpdate={updateLocation}
+            stage={state.stage}
           />
         )}
 
