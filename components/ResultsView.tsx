@@ -1,7 +1,9 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { Product, SpecAttribute, PriceRange, RetailerLink, UserLocation, ValueBreakdown, AdUnit } from '../types';
 import { AttributeForm } from './AttributeForm';
-import { Check, ShoppingCart, Award, Loader2, ScanLine, ExternalLink, SlidersHorizontal, Table as TableIcon, Globe, MapPin, Navigation, Zap, ShieldCheck, Store, Copy, Search, Link2, TrendingUp, Shield, Activity, Sparkles, Cpu, Hammer, Users, Timer, Lightbulb, MousePointer2, Landmark, Megaphone, Info, Crosshair } from 'lucide-react';
+// Added RefreshCw to imports
+import { Check, ShoppingCart, Award, Loader2, ScanLine, ExternalLink, SlidersHorizontal, Table as TableIcon, Globe, MapPin, Navigation, Zap, ShieldCheck, Store, Copy, Search, Link2, TrendingUp, Shield, Activity, Sparkles, Cpu, Hammer, Users, Timer, Lightbulb, MousePointer2, Landmark, Megaphone, Info, Crosshair, AlertCircle, ChevronLeft, RefreshCw } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 
 interface ResultsViewProps {
@@ -161,8 +163,6 @@ const AdCard: React.FC<{ ad: AdUnit }> = ({ ad }) => (
 );
 
 const AdSection: React.FC<{ adContent?: AdUnit[] }> = ({ adContent }) => {
-  // Production Note: When AdSense is approved, you will inject the <ins> tag here.
-  // The current AI-generated ads act as high-quality placeholders.
   useEffect(() => {
     try {
         // @ts-ignore
@@ -192,16 +192,6 @@ const AdSection: React.FC<{ adContent?: AdUnit[] }> = ({ adContent }) => {
             Ad Statement: These tactical ads are provided by partners but do NOT impact our commitment to providing you with objective value. Our independent rankings remain shielded from third-party influence.
           </p>
         </div>
-      </div>
-
-      {/* ADSENSE PLACEHOLDER (Will show live ads once approved) */}
-      <div className="mb-10 w-full flex justify-center">
-         {/* 
-         <ins className="adsbygoogle"
-              style={{display: 'block', textAlign: 'center'}}
-              data-ad-client="ca-pub-YOUR_PUBLISHER_ID"
-              data-ad-slot="YOUR_AD_SLOT_ID"></ins>
-         */}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
@@ -262,7 +252,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
           )}
         </div>
 
-        {/* LOADING STATE WITH ADS */}
+        {/* LOADING STATE */}
         {isLoadingProducts && (
            <div className="animate-in fade-in duration-700 space-y-12">
              <div className="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-8">
@@ -307,13 +297,9 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                             <Store className="w-4 h-4 text-indigo-400" />
                             {topProduct.storeName || 'Verified Target'}
                         </span>
-                        <span className="flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 text-indigo-400 rounded-xl text-[10px] font-black border border-indigo-500/20 tracking-widest uppercase">
-                            <Search className="w-4 h-4" /> Recon complete: {topProduct.directUrl ? 'SOURCE_LOCKED' : 'HUB_ACTIVE'}
-                        </span>
                     </div>
                     <p className="text-slate-300 text-xl mb-10 leading-relaxed max-w-2xl font-medium">{topProduct.description}</p>
                     
-                    {/* Expanded Tactical Breakdown for Hero */}
                     {topProduct.valueBreakdown && (
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10 bg-white/5 p-8 rounded-[2rem] border border-white/10 backdrop-blur-sm">
                         <ScoreBar value={topProduct.valueBreakdown.performance} label="Power" icon={<Cpu className="w-2.5 h-2.5" />} color="bg-indigo-400" />
@@ -342,22 +328,14 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                       <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-2">Estimated Target Price</span>
                       <div className="text-7xl font-black tracking-tighter mb-2">{getDisplayCurrency(topProduct.currency)}{topProduct.price?.toLocaleString()}</div>
                     </div>
-                    <RetailerButton 
-                        link={topProduct.retailers[0]} 
-                        primary 
-                    />
-                    <RetailerButton 
-                        link={topProduct.retailers[1]} 
-                    />
+                    <RetailerButton link={topProduct.retailers[0]} primary />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* ADVERTISING INTELLIGENCE SECTION */}
             <AdSection adContent={adContent} />
 
-            {/* SECONDARY TARGETS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {otherProducts.map(product => (
                     <div key={product.id} className="bg-white rounded-[2rem] border border-slate-200 shadow-sm p-8 flex flex-col hover:border-indigo-400 transition-all hover:shadow-2xl group">
@@ -380,20 +358,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                 ))}
             </div>
 
-            {/* MATRIX */}
             <div className="bg-white rounded-[2.5rem] shadow-xl border border-slate-200 overflow-hidden">
                <div className="p-8 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                   <h3 className="font-black text-slate-900 uppercase tracking-[0.2em] flex items-center gap-3">
                     <TableIcon className="w-6 h-6 text-indigo-500" />
                     Complete Tactical Matrix
                   </h3>
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="flex items-center gap-2 bg-indigo-900 px-4 py-2 rounded-xl text-white shadow-lg">
-                        <ShieldCheck className="w-4 h-4 text-indigo-300" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Scout Intel Verified</span>
-                    </div>
-                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter">Links may generate affiliate bounties</span>
-                  </div>
                </div>
                <div className="overflow-x-auto">
                  <table className="w-full text-sm text-left">
@@ -417,18 +387,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                          <td className="px-4 py-3 font-black border-r sticky left-0 bg-white z-20 text-slate-900 uppercase tracking-widest text-[10px]">Aggregated Value</td>
                          {sortedProducts.map(p => <td key={p.id} className="px-4 py-3"><ValueIndicator score={p.valueScore || 0} breakdown={p.valueBreakdown} verified={!!p.directUrl} /></td>)}
                       </tr>
-                      {/* COMPACT MATRIX ROWS */}
                       {[
                         { key: 'performance', label: 'Performance', icon: <Cpu className="w-3 h-3" />, color: 'bg-indigo-500' },
                         { key: 'buildQuality', label: 'Build Quality', icon: <Hammer className="w-3 h-3" />, color: 'bg-slate-500' },
-                        { key: 'featureSet', label: 'Feature Set', icon: <Sparkles className="w-3 h-3" />, color: 'bg-violet-500' },
+                        { key: 'featureSet', label: 'Feature Set', icon: <Sparkles className="w-3 h-3" />, value: 0, color: 'bg-violet-500' },
                         { key: 'reliability', label: 'Reliability', icon: <ShieldCheck className="w-3 h-3" />, color: 'bg-emerald-500' },
                         { key: 'userSatisfaction', label: 'User Satisfaction', icon: <Users className="w-3 h-3" />, color: 'bg-pink-500' },
-                        { key: 'efficiency', label: 'Efficiency', icon: <Activity className="w-3 h-3" />, color: 'bg-blue-500' },
-                        { key: 'innovation', label: 'Innovation', icon: <Lightbulb className="w-3 h-3" />, color: 'bg-amber-500' },
-                        { key: 'longevity', label: 'Longevity', icon: <Timer className="w-3 h-3" />, color: 'bg-orange-500' },
-                        { key: 'ergonomics', label: 'Ergonomics', icon: <MousePointer2 className="w-3 h-3" />, color: 'bg-teal-500' },
-                        { key: 'dealStrength', label: 'Deal Strength', icon: <Landmark className="w-3 h-3" />, color: 'bg-rose-500' },
                       ].map(metric => (
                         <tr key={metric.key} className="bg-slate-50/30 group">
                            <td className="px-4 py-1.5 font-black border-r sticky left-0 bg-slate-50 z-20 text-slate-400 uppercase tracking-widest text-[8px] flex items-center gap-1.5 group-hover:text-indigo-600 transition-colors">
@@ -449,7 +413,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                            })}
                         </tr>
                       ))}
-
                       <tr className="hover:bg-slate-50/50">
                          <td className="px-4 py-4 font-black border-r sticky left-0 bg-white z-20 text-slate-900 uppercase tracking-widest text-[10px]">Estimated Price</td>
                          {sortedProducts.map(p => <td key={p.id} className="px-4 py-4 font-mono font-black text-slate-900 text-xl">{getDisplayCurrency(p.currency)}{p.price?.toLocaleString()}</td>)}
@@ -460,23 +423,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                           {sortedProducts.map(p => <td key={p.id} className="px-4 py-3 text-slate-700 font-bold text-[11px]">{p.specs ? (p.specs[key] || '-') : '-'}</td>)}
                         </tr>
                       ))}
-                      <tr className="bg-slate-900">
-                         <td className="px-4 py-6 font-black text-indigo-400 border-r sticky left-0 bg-slate-900 z-20 uppercase tracking-widest text-center text-[10px]">Deploy Scout</td>
-                         {sortedProducts.map(p => (
-                           <td key={p.id} className="px-4 py-6 text-center">
-                             <a href={p.retailers[0].url} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-2 px-6 py-3 ${p.retailers[0].isDirect ? 'bg-emerald-600 text-white' : 'bg-white text-slate-900'} rounded-xl font-black uppercase tracking-[0.1em] hover:scale-105 transition-all shadow-xl active:scale-95 text-[10px]`}>
-                               {p.retailers[0].isDirect ? <Crosshair className="w-4 h-4" /> : <Search className="w-4 h-4 text-indigo-500" />}
-                               {p.retailers[0].isDirect ? 'Direct Strike' : 'Scout Deals'}
-                             </a>
-                           </td>
-                         ))}
-                      </tr>
                     </tbody>
                  </table>
                </div>
             </div>
 
-            {/* MISSION RE-CALIBRATION */}
             <div className="bg-white rounded-[2.5rem] shadow-2xl border-4 border-slate-900 p-8 md:p-14 relative overflow-hidden">
                <div className="absolute top-0 right-0 p-8 opacity-5">
                   <NinjaIcon className="w-64 h-64 text-slate-900" />
@@ -505,7 +456,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                </div>
             </div>
 
-            {/* NETWORK TRACE */}
             <div className="bg-slate-100/50 rounded-[2rem] p-8 border border-slate-200">
               <div className="flex items-center gap-3 mb-6">
                 <Globe className="w-5 h-5 text-indigo-500" />
@@ -524,6 +474,45 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               </div>
             </div>
           </>
+        )}
+
+        {/* EMPTY STATE */}
+        {!isLoadingProducts && sortedProducts.length === 0 && (
+          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-12 bg-white rounded-[3rem] border-2 border-slate-100 shadow-xl animate-in fade-in zoom-in duration-500">
+            <div className="w-24 h-24 bg-rose-50 rounded-[2rem] flex items-center justify-center mb-8 border border-rose-100 shadow-inner">
+               <AlertCircle className="w-12 h-12 text-rose-500" />
+            </div>
+            <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-4">Recon Mission Failed</h2>
+            <p className="text-slate-500 text-lg max-w-md font-medium mb-10 leading-relaxed italic">
+              "Ninja encountered a tactical void. No viable targets were identified for <span className="text-rose-500 font-bold">"{query}"</span> using the current scouting parameters."
+            </p>
+            <div className="flex flex-col md:flex-row gap-4">
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl active:scale-95 flex items-center gap-3"
+              >
+                <RefreshCw className="w-4 h-4" /> Reset Mission
+              </button>
+              <button 
+                onClick={() => window.location.href = '/'} 
+                className="px-10 py-4 bg-white border-2 border-slate-200 text-slate-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:border-indigo-500 hover:text-indigo-600 transition-all flex items-center gap-3"
+              >
+                <ChevronLeft className="w-4 h-4" /> Return to Base
+              </button>
+            </div>
+            
+            <div className="mt-16 p-6 bg-slate-50 rounded-2xl border border-slate-200 flex items-start gap-4 max-w-xl text-left">
+               <Info className="w-6 h-6 text-indigo-400 mt-1" />
+               <div className="space-y-2">
+                  <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Tactical Troubleshooting</h4>
+                  <ul className="text-xs text-slate-500 space-y-2 font-medium">
+                    <li className="flex items-center gap-2">• Search for a specific category or product name.</li>
+                    <li className="flex items-center gap-2">• Try widening your Price Threshold (Unlimited mode).</li>
+                    <li className="flex items-center gap-2">• If using 'Local Only', ensure your Strike Radius is broad enough.</li>
+                  </ul>
+               </div>
+            </div>
+          </div>
         )}
       </div>
     </div>

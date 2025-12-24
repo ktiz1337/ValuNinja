@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
 import { 
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  AreaChart, Area 
-} from 'recharts';
-import { 
   Terminal, ShieldCheck, Activity, Users, Target, Zap, 
   Lock, ArrowRight, LayoutDashboard,
   RefreshCw, Cpu, TrendingUp, Rocket, Server, ShieldAlert,
-  Wallet, Link as LinkIcon, Save, CheckCircle2, Globe, Key, AlertCircle, Info
+  Wallet, Link as LinkIcon, Save, CheckCircle2, Globe, Key, AlertCircle, Info, BarChart3
 } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 
@@ -43,6 +39,59 @@ interface AdminDashboardProps {
   addLog: (msg: string, type?: SystemLog['type']) => void;
 }
 
+// Tactical SVG Sparkline - Replaces Recharts for zero-dependency reliability
+const TacticalSparkline: React.FC<{ data: { name: string; missions: number }[] }> = ({ data }) => {
+  if (!data || data.length < 2) return <div className="h-full flex items-center justify-center text-slate-400 text-xs font-bold uppercase tracking-widest">Insufficient Tactical Data</div>;
+
+  const max = Math.max(...data.map(d => d.missions), 5);
+  const width = 1000;
+  const height = 400;
+  const padding = 40;
+  
+  const points = data.map((d, i) => {
+    const x = padding + (i * (width - 2 * padding)) / (data.length - 1);
+    const y = height - padding - (d.missions * (height - 2 * padding)) / max;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div className="w-full h-full p-4 bg-slate-50 rounded-[2rem] border border-slate-100 shadow-inner overflow-hidden">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full drop-shadow-lg">
+        <defs>
+          <linearGradient id="grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style={{ stopColor: '#6366f1', stopOpacity: 0.2 }} />
+            <stop offset="100%" style={{ stopColor: '#6366f1', stopOpacity: 0 }} />
+          </linearGradient>
+        </defs>
+        <path
+          d={`M ${padding},${height - padding} L ${points} L ${width - padding},${height - padding} Z`}
+          fill="url(#grad)"
+        />
+        <polyline
+          fill="none"
+          stroke="#6366f1"
+          strokeWidth="6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={points}
+        />
+        {data.map((d, i) => {
+          const x = padding + (i * (width - 2 * padding)) / (data.length - 1);
+          const y = height - padding - (d.missions * (height - 2 * padding)) / max;
+          return (
+            <g key={i}>
+              <circle cx={x} cy={y} r="8" fill="#6366f1" className="animate-pulse" />
+              <text x={x} y={height - 10} textAnchor="middle" fontSize="18" fontWeight="900" fill="#94a3b8" className="uppercase tracking-tighter">
+                {d.name}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
   onBack, logs, stats, affiliates, onUpdateAffiliates, currentPasscode, onUpdatePasscode, addLog 
 }) => {
@@ -51,7 +100,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'SYSTEM' | 'AFFILIATES' | 'SECURITY'>('ANALYTICS');
   
-  // Security State
   const [showRecovery, setShowRecovery] = useState(false);
   const [passUpdate, setPassUpdate] = useState({ current: '', next: '', confirm: '' });
   const [updateError, setUpdateError] = useState<string | null>(null);
@@ -96,7 +144,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   const performSystemReset = () => {
-    if (confirm("WARNING: This will purge ALL tactical data (Stats, Logs, Affiliates) and reset the Protocol Key to factory default 'NINJA2025'. Proceed?")) {
+    if (window.confirm("WARNING: This will purge ALL tactical data (Stats, Logs, Affiliates) and reset the Protocol Key to factory default 'NINJA2025'. Proceed?")) {
       localStorage.clear();
       window.location.reload();
     }
@@ -109,10 +157,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       setIsSaving(false);
     }, 800);
   };
-
-  const chartData = stats.history.length > 0 ? stats.history : [
-    { name: 'N/A', missions: 0, value: 0 }
-  ];
 
   if (!isAuthenticated) {
     return (
@@ -174,7 +218,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div className="max-w-[1600px] mx-auto px-6 py-12 space-y-10 animate-in fade-in duration-500">
-      {/* Header */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-b border-slate-200 pb-10">
         <div className="flex items-center gap-6">
           <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center shadow-2xl">
@@ -237,28 +280,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[500px]">
               <div className="flex items-center justify-between mb-10">
                 <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                   <TrendingUp className="w-5 h-5 text-indigo-500" /> Mission Intensity History
                 </h3>
+                <div className="px-3 py-1 bg-indigo-50 rounded-full border border-indigo-100 text-[10px] font-black text-indigo-600 uppercase">Sparkline_Engine_v1</div>
               </div>
-              <div className="h-80 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorMissions" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
-                    <YAxis stroke="#94a3b8" fontSize={10} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 'bold' }} />
-                    <Area type="monotone" dataKey="missions" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorMissions)" />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="flex-1 w-full min-h-0">
+                <TacticalSparkline data={stats.history} />
               </div>
             </div>
 
@@ -267,9 +297,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <h3 className="text-white font-black tracking-tight flex items-center gap-3">
                      <Terminal className="w-5 h-5 text-indigo-400" /> Live Tactical Feed
                   </h3>
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-ping"></span>
                </div>
                <div className="flex-1 overflow-y-auto space-y-4 font-mono scrollbar-hide">
-                  {logs.map(log => (
+                  {logs.length > 0 ? logs.map(log => (
                     <div key={log.id} className="text-[11px] flex gap-4 group">
                        <span className="text-slate-600 font-bold whitespace-nowrap">{log.time}</span>
                        <span className={`leading-relaxed transition-colors ${
@@ -281,7 +312,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           {log.msg}
                        </span>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="h-full flex items-center justify-center text-slate-700 uppercase tracking-[0.3em] font-black italic">Waiting for Mission Sync...</div>
+                  )}
                </div>
             </div>
           </div>
@@ -358,16 +391,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
            </div>
 
-           <div className="bg-slate-900 p-10 rounded-[3rem] shadow-2xl space-y-6 relative overflow-hidden">
+           <div className="bg-slate-900 p-10 rounded-[3rem] shadow-2xl space-y-6 relative overflow-hidden text-center">
               <div className="absolute top-0 right-0 p-8 opacity-5">
                  <AlertCircle className="w-32 h-32 text-rose-500" />
               </div>
               <div className="relative z-10 space-y-4">
-                 <h3 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+                 <h3 className="text-2xl font-black text-white tracking-tight flex items-center justify-center gap-3">
                     <Activity className="w-6 h-6 text-rose-500" /> Danger Zone
                  </h3>
                  <p className="text-slate-400 text-sm font-medium">Perform a full atomic reset of this node. All data will be purged.</p>
-                 <button onClick={performSystemReset} className="px-8 py-3 border-2 border-rose-500/50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">Emergency System Purge</button>
+                 <button onClick={performSystemReset} className="px-12 py-4 border-2 border-rose-500/50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all">Emergency System Purge</button>
               </div>
            </div>
         </div>

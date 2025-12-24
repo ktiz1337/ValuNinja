@@ -1,7 +1,14 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { SpecAttribute, Product, AttributeType, PriceRange, RetailerLink, AdUnit, UserLocation } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAI = () => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.warn("VALUNINJA_SECURITY: API_KEY not detected in environment.");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 const cleanAndParseJSON = (text: string) => {
   try {
@@ -46,6 +53,7 @@ export const getRegionInfo = (): RegionInfo => {
 
 export const resolveRegionFromLocation = async (lat: number, lng: number): Promise<RegionInfo | null> => {
   try {
+    const ai = getAI();
     const prompt = `Identify the country for location: Lat ${lat}, Lng ${lng}. Return JSON with countryName, flag (emoji), domain (Amazon domain like amazon.ca), and currencySymbol.`;
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -82,7 +90,6 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
   
   if (product.directUrl && isRealUrl(product.directUrl)) {
     let finalUrl = product.directUrl;
-    // Apply Impact or General tag if it's a direct non-amazon link
     if (affiliates?.impactId && !finalUrl.includes('amazon')) {
       finalUrl += (finalUrl.includes('?') ? '&' : '?') + `irclickid=${affiliates.impactId}`;
     }
@@ -95,14 +102,12 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
     });
   }
 
-  // TACTICAL HUB (Google Shopping)
   links.push({ 
     name: 'Tactical Hub (Google Shopping)', 
     url: `https://www.google.com/search?q=${query}&tbm=shop`, 
     icon: 'maps' 
   });
 
-  // AMAZON SOURCE + TAG
   let amzUrl = `https://www.${region.domain}/s?k=${query}`;
   if (affiliates?.amazonTag) {
     amzUrl += `&tag=${affiliates.amazonTag}`;
@@ -118,8 +123,9 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
 };
 
 export const analyzeProductCategory = async (query: string): Promise<{ attributes: SpecAttribute[], suggestions: string[], marketGuide: string, defaultValues: Record<string, any>, priceRange: PriceRange, adUnits: AdUnit[], region: RegionInfo }> => {
+  const ai = getAI();
   const region = getRegionInfo();
-  const prompt = `User in ${region.countryName} looking for: "${query}". Generate attributes, tactical brief, suggestions, price range, and 2 search-relevant ad units.`;
+  const prompt = `User in ${region.countryName} looking for: "${query}". Generate attributes, tactical brief, suggestions, price range, and 2 search-relevant ad units. Output JSON.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -139,12 +145,47 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
 };
 
 export const searchProducts = async (query: string, userValues: Record<string, any>, location?: UserLocation, affiliates?: any): Promise<{ products: Product[], summary: string, sources: { title: string, uri: string }[], region: RegionInfo }> => {
+  const ai = getAI();
   const region = getRegionInfo();
   
   const prompt = `
-    Mission: Identify top 4 VALUE products for "${query}" in ${region.countryName}.
-    INTEL PROTOCOL: Scan Google Shopping for real items. Extract merchant names and current prices.
-    JSON Output ONLY.
+    Mission: Identify top 4 real-world products matching: "${query}" for a user in ${region.countryName}.
+    Constraints: 
+    - Use Google Search to find current prices and merchants. 
+    - Preference for items in stock.
+    - Output must be valid JSON in this exact structure:
+    {
+      "products": [
+        {
+          "brand": "string",
+          "name": "string",
+          "price": number,
+          "currency": "${region.currencySymbol}",
+          "storeName": "string",
+          "description": "short tactical brief",
+          "specs": { "key": "value" },
+          "pros": ["string"],
+          "cons": ["string"],
+          "valueScore": 1-100,
+          "valueBreakdown": {
+            "performance": 1-10,
+            "buildQuality": 1-10,
+            "featureSet": 1-10,
+            "reliability": 1-10,
+            "userSatisfaction": 1-10,
+            "efficiency": 1-10,
+            "innovation": 1-10,
+            "longevity": 1-10,
+            "ergonomics": 1-10,
+            "dealStrength": 1-10
+          }
+        }
+      ],
+      "summary": "Tactical summary of the current market state"
+    }
+    
+    User Filters: ${JSON.stringify(userValues)}
+    Tactical Objective: Find the absolute best value-to-performance ratio.
   `;
 
   const response = await ai.models.generateContent({
@@ -165,12 +206,16 @@ export const searchProducts = async (query: string, userValues: Record<string, a
   }).filter((s): s is { title: string, uri: string } => !!s);
 
   const data = cleanAndParseJSON(response.text || '');
-  if (!data || !Array.isArray(data.products)) throw new Error("Tactical reconnaissance failed.");
+  if (!data || !Array.isArray(data.products)) {
+    console.error("No valid products array in AI response:", response.text);
+    throw new Error("Tactical reconnaissance failed. AI returned invalid data structure.");
+  }
 
   const products = data.products.map((p: any) => {
+    // Try to link a grounded source to the product
     const bestMatch = groundingSources.find(src => 
-      src.title.toLowerCase().includes(p.brand.toLowerCase()) && 
-      (src.title.toLowerCase().includes(p.storeName.toLowerCase()) || src.title.toLowerCase().includes(p.name.toLowerCase().split(' ')[0]))
+      src.title.toLowerCase().includes((p.brand || "").toLowerCase()) && 
+      (src.title.toLowerCase().includes((p.storeName || "").toLowerCase()) || src.title.toLowerCase().includes((p.name || "").toLowerCase().split(' ')[0]))
     );
 
     const verifiedUrl = bestMatch ? bestMatch.uri : undefined;
@@ -184,5 +229,5 @@ export const searchProducts = async (query: string, userValues: Record<string, a
     };
   });
 
-  return { products, summary: data.summary || "Ready.", sources: groundingSources, region };
+  return { products, summary: data.summary || "Reconnaissance complete.", sources: groundingSources, region };
 };

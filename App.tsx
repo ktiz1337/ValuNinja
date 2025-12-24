@@ -55,7 +55,7 @@ const BootSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
       });
     }, 600);
     return () => clearInterval(timer);
-  }, [onComplete, steps.length]);
+  }, [onComplete]);
 
   return (
     <div className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 overflow-hidden">
@@ -194,7 +194,6 @@ const App: React.FC = () => {
   const [loadingStep, setLoadingStep] = useState<string>("ValuNinja Scouting Global Inventory...");
   const [sources, setSources] = useState<{ title: string, uri: string }[]>([]);
 
-  // ADMIN STATE
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [stats, setStats] = useState<AppStats>({
     totalMissions: 0,
@@ -222,8 +221,8 @@ const App: React.FC = () => {
     setLogs(prev => [newLog, ...prev].slice(0, 50));
   }, []);
 
-  // Sync Stats, Affiliates & Security with LocalStorage
   useEffect(() => {
+    console.log("ValuNinja Initializing...");
     const savedStats = localStorage.getItem('valuninja_stats');
     if (savedStats) setStats(JSON.parse(savedStats));
 
