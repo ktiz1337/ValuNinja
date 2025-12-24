@@ -36,7 +36,7 @@ interface AffiliateConfig {
 
 const BootSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
-  const steps = ["Ronin OS Phase 1...", "Initialising Hybrid Nodes...", "Verifying Gemini Core...", "Strike Protocol Ready"];
+  const steps = ["Ronin OS Protocol...", "Initialising Hybrid Nodes...", "Verifying Gemini Core...", "Strike Protocol Ready"];
   
   useEffect(() => {
     const timer = setInterval(() => {
@@ -93,6 +93,31 @@ const App: React.FC = () => {
     setLogs(prev => [newLog, ...prev].slice(0, 50));
   }, []);
 
+  const requestLocation = useCallback((): Promise<Partial<UserLocation>> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        addLog("Geolocation not supported by this browser.", "warning");
+        resolve({});
+        return;
+      }
+      addLog("Requesting tactical coordinates...", "info");
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          addLog("GPS Lock acquired.", "success");
+          resolve({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude
+          });
+        },
+        (error) => {
+          addLog(`GPS Link Failed: ${error.message}`, "warning");
+          resolve({});
+        },
+        { timeout: 8000, enableHighAccuracy: true }
+      );
+    });
+  }, [addLog]);
+
   useEffect(() => {
     const savedStats = localStorage.getItem('valuninja_stats');
     if (savedStats) setStats(JSON.parse(savedStats));
@@ -102,15 +127,28 @@ const App: React.FC = () => {
   }, [addLog, isBooting]);
 
   const handleInitialSearch = async (query: string) => {
+    let currentLocation = state.location;
+
+    // Trigger geolocation if mode is not GLOBAL and we don't have coords yet
+    if (!state.location.excludeRegionSpecific && !state.location.latitude) {
+      setView('RESULTS');
+      setLoadingStep("Acquiring GPS Signal...");
+      const locUpdate = await requestLocation();
+      currentLocation = { ...state.location, ...locUpdate };
+      setState(prev => ({ ...prev, location: currentLocation }));
+    }
+
     setState(prev => ({ ...prev, query, stage: 'ANALYZING', error: undefined, results: [] }));
     setView('RESULTS');
     setLoadingStep("AI Analyzing Target...");
+    
     try {
       const res = await analyzeProductCategory(query);
       setRegion({ name: res.region.countryName, flag: res.region.flag });
       setState(prev => ({ ...prev, stage: 'LOADING_PRODUCTS', attributes: res.attributes, suggestions: res.suggestions, marketGuide: res.marketGuide, userValues: res.defaultValues, priceRange: res.priceRange, adContent: res.adUnits }));
       setLoadingStep("Scrubbing Market Sources...");
-      const searchRes = await searchProducts(query, res.defaultValues, state.location, affiliates);
+      
+      const searchRes = await searchProducts(query, res.defaultValues, currentLocation, affiliates);
       setSummary(searchRes.summary);
       setSources(searchRes.sources);
       setState(prev => ({ ...prev, stage: 'RESULTS', results: searchRes.products }));
@@ -121,7 +159,7 @@ const App: React.FC = () => {
       setState(prev => ({ 
         ...prev, 
         stage: 'IDLE', 
-        error: `Mission aborted: ${msg}. Please verify your environment setup.`
+        error: `Mission aborted: ${msg}`
       }));
     }
   };
@@ -136,7 +174,7 @@ const App: React.FC = () => {
           <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center"><NinjaIcon className="w-5 h-5 text-white" /></div>
           <div>
             <span className="font-extrabold text-lg block leading-none">ValuNinja</span>
-            <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest leading-none">Phase 1 Launch</span>
+            <span className="text-[8px] font-black text-indigo-500 uppercase tracking-widest leading-none">Scout Protocol</span>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -161,12 +199,23 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {view === 'HOME' && <Hero onSearch={handleInitialSearch} isAnalyzing={state.stage === 'ANALYZING'} location={state.location} onLocationUpdate={(l) => setState(p => ({ ...p, location: { ...p.location, ...l } }))} onLocationRequest={() => {}} />}
+        {view === 'HOME' && (
+          <Hero 
+            onSearch={handleInitialSearch} 
+            isAnalyzing={state.stage === 'ANALYZING' || loadingStep === "Acquiring GPS Signal..."} 
+            location={state.location} 
+            onLocationUpdate={(l) => setState(p => ({ ...p, location: { ...p.location, ...l } }))} 
+            onLocationRequest={async () => {
+              const loc = await requestLocation();
+              setState(p => ({ ...p, location: { ...p.location, ...loc } }));
+            }} 
+          />
+        )}
         {view === 'RESULTS' && (
           <ResultsView 
             {...state} 
             products={state.results}
-            isSearching={state.stage === 'SEARCHING' || state.stage === 'ANALYZING'}
+            isSearching={state.stage === 'SEARCHING' || state.stage === 'ANALYZING' || loadingStep === "Acquiring GPS Signal..."}
             summary={summary} 
             isLoadingProducts={state.stage === 'LOADING_PRODUCTS'} 
             query={state.query} 
@@ -186,7 +235,10 @@ const App: React.FC = () => {
             }} 
             regionFlag={region.flag} 
             onLocationUpdate={(l) => setState(p => ({ ...p, location: { ...p.location, ...l } }))}
-            onLocationRequest={() => {}}
+            onLocationRequest={async () => {
+              const loc = await requestLocation();
+              setState(p => ({ ...p, location: { ...p.location, ...loc } }));
+            }}
           />
         )}
         {view === 'PRIVACY' && <PrivacyPolicy onBack={() => setView('HOME')} />}
@@ -195,7 +247,7 @@ const App: React.FC = () => {
         {view === 'ADMIN' && <AdminDashboard onBack={() => setView('HOME')} logs={logs} stats={stats} affiliates={affiliates} onUpdateAffiliates={setAffiliates} currentPasscode={adminPasscode} onUpdatePasscode={setAdminPasscode} addLog={addLog} />}
       </main>
       <footer className="p-10 text-center">
-        <div className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em]">Ronin Systems © 2025 • Phase 1 Specification</div>
+        <div className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em]">Ronin Systems © 2025</div>
       </footer>
     </div>
   );

@@ -24,9 +24,9 @@ export const AboutUs: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         <section className="bg-slate-900 text-white rounded-[3rem] p-10 md:p-16 relative overflow-hidden shadow-2xl">
           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-600 rounded-full blur-[120px] opacity-20 -mr-20 -mt-20"></div>
           <div className="relative z-10 space-y-8">
-            <h2 className="text-3xl font-black tracking-tight">Phase 1 Mission</h2>
+            <h2 className="text-3xl font-black tracking-tight">The Mission</h2>
             <p className="text-xl text-slate-300 leading-relaxed">
-              We built ValuNinja Phase 1 to act as an autonomous agent for the consumer. Most "top 10" lists are paid advertisements in disguise. We use cold, hard data—specs, real-time pricing, and build quality analytics—to calculate a <strong>Value Score</strong> that cannot be bought.
+              We built ValuNinja to act as an autonomous agent for the consumer. Most "top 10" lists are paid advertisements in disguise. We use cold, hard data—specs, real-time pricing, and build quality analytics—to calculate a <strong>Value Score</strong> that cannot be bought.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-white/10">
               <div className="space-y-3">
@@ -86,7 +86,7 @@ export const AboutUs: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </section>
 
         <section className="text-center py-12 border-t border-slate-100">
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-8">Phase 1 Launch Specification 2025</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-8">Ronin Systems 2025</p>
           <div className="flex justify-center gap-8">
             <Award className="w-8 h-8 text-slate-300" />
             <ShieldCheck className="w-8 h-8 text-slate-300" />

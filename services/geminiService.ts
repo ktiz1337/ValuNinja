@@ -2,6 +2,10 @@
 import { GoogleGenAI } from "@google/genai";
 import { SpecAttribute, Product, AttributeType, PriceRange, RetailerLink, AdUnit, UserLocation } from "../types";
 
+/**
+ * Robust JSON cleaner that handles markdown blocks, trailing commas, 
+ * and model chatter before/after the JSON block.
+ */
 const cleanAndParseJSON = (text: string) => {
   if (!text) return null;
   try {
@@ -78,7 +82,7 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-image-preview',
+      model: 'gemini-3-flash-preview',
       contents: `Mission: Analyze "${query}" in ${region.countryName}. Define 4 key technical attributes to compare for this product/service. Return strictly JSON: {"attributes": [{"key": "string", "label": "string", "type": "NUMBER|STRING|BOOLEAN", "defaultValue": "any"}],"marketGuide": "2-3 sentences of tactical advice","suggestions": ["specific spec 1", "specific spec 2"],"priceRange": {"min": number, "max": number, "currency": "string"},"adUnits": [{"brand": "string", "headline": "string", "description": "string", "cta": "string"}]}`,
       config: { temperature: 0, responseMimeType: "application/json" }
     });
