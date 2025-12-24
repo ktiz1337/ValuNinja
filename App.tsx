@@ -210,6 +210,8 @@ const App: React.FC = () => {
     impactId: ''
   });
 
+  const [adminPasscode, setAdminPasscode] = useState<string>('NINJA2025');
+
   const addLog = useCallback((msg: string, type: SystemLog['type'] = 'info') => {
     const newLog: SystemLog = {
       id: Math.random().toString(36).substr(2, 9),
@@ -220,13 +222,16 @@ const App: React.FC = () => {
     setLogs(prev => [newLog, ...prev].slice(0, 50));
   }, []);
 
-  // Sync Stats & Affiliates with LocalStorage
+  // Sync Stats, Affiliates & Security with LocalStorage
   useEffect(() => {
     const savedStats = localStorage.getItem('valuninja_stats');
     if (savedStats) setStats(JSON.parse(savedStats));
 
     const savedAffiliates = localStorage.getItem('valuninja_affiliates');
     if (savedAffiliates) setAffiliates(JSON.parse(savedAffiliates));
+
+    const savedPasscode = localStorage.getItem('valuninja_passcode');
+    if (savedPasscode) setAdminPasscode(savedPasscode);
 
     if (!isBooting) {
       addLog('System: Ronin Protocol version 2.5 initialized.', 'info');
@@ -241,6 +246,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('valuninja_affiliates', JSON.stringify(affiliates));
   }, [affiliates]);
+
+  useEffect(() => {
+    localStorage.setItem('valuninja_passcode', adminPasscode);
+  }, [adminPasscode]);
 
   const requestLocation = useCallback(() => {
     if (navigator.geolocation) {
@@ -453,7 +462,16 @@ const App: React.FC = () => {
         {view === 'PRIVACY' && <PrivacyPolicy onBack={() => setView('HOME')} />}
         {view === 'ABOUT' && <AboutUs onBack={() => setView('HOME')} />}
         {view === 'TERMS' && <TermsOfService onBack={() => setView('HOME')} />}
-        {view === 'ADMIN' && <AdminDashboard onBack={() => setView('HOME')} logs={logs} stats={stats} affiliates={affiliates} onUpdateAffiliates={setAffiliates} />}
+        {view === 'ADMIN' && <AdminDashboard 
+          onBack={() => setView('HOME')} 
+          logs={logs} 
+          stats={stats} 
+          affiliates={affiliates} 
+          onUpdateAffiliates={setAffiliates} 
+          currentPasscode={adminPasscode}
+          onUpdatePasscode={setAdminPasscode}
+          addLog={addLog}
+        />}
       </main>
 
       {!isBooting && (

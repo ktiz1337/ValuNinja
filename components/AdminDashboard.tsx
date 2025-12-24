@@ -1,15 +1,13 @@
-
 import React, { useState } from 'react';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   AreaChart, Area 
 } from 'recharts';
-// Added missing 'Globe' import from lucide-react
 import { 
   Terminal, ShieldCheck, Activity, Users, Target, Zap, 
   Lock, ArrowRight, LayoutDashboard,
   RefreshCw, Cpu, TrendingUp, Rocket, Server, ShieldAlert,
-  Wallet, Link as LinkIcon, Save, CheckCircle2, Globe
+  Wallet, Link as LinkIcon, Save, CheckCircle2, Globe, Key, AlertCircle, Info
 } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 
@@ -40,24 +38,67 @@ interface AdminDashboardProps {
   stats: AppStats;
   affiliates: AffiliateConfig;
   onUpdateAffiliates: (config: AffiliateConfig) => void;
+  currentPasscode: string;
+  onUpdatePasscode: (newPass: string) => void;
+  addLog: (msg: string, type?: SystemLog['type']) => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, logs, stats, affiliates, onUpdateAffiliates }) => {
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
+  onBack, logs, stats, affiliates, onUpdateAffiliates, currentPasscode, onUpdatePasscode, addLog 
+}) => {
   const [passcode, setPasscode] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'SYSTEM' | 'AFFILIATES'>('ANALYTICS');
+  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'SYSTEM' | 'AFFILIATES' | 'SECURITY'>('ANALYTICS');
+  
+  // Security State
+  const [showRecovery, setShowRecovery] = useState(false);
+  const [passUpdate, setPassUpdate] = useState({ current: '', next: '', confirm: '' });
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState(false);
+
   const [tempAffiliates, setTempAffiliates] = useState<AffiliateConfig>(affiliates);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcode.toUpperCase() === 'NINJA2025') {
+    if (passcode === currentPasscode) {
       setIsAuthenticated(true);
       setError(false);
     } else {
       setError(true);
       setPasscode('');
+    }
+  };
+
+  const handlePassUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    setUpdateError(null);
+    setUpdateSuccess(false);
+
+    if (passUpdate.current !== currentPasscode) {
+      setUpdateError('Current Protocol Key is invalid.');
+      return;
+    }
+    if (passUpdate.next.length < 4) {
+      setUpdateError('New Key must be at least 4 characters.');
+      return;
+    }
+    if (passUpdate.next !== passUpdate.confirm) {
+      setUpdateError('New Keys do not match.');
+      return;
+    }
+
+    onUpdatePasscode(passUpdate.next);
+    setUpdateSuccess(true);
+    setPassUpdate({ current: '', next: '', confirm: '' });
+    addLog('Security: Master Protocol Key updated successfully.', 'success');
+  };
+
+  const performSystemReset = () => {
+    if (confirm("WARNING: This will purge ALL tactical data (Stats, Logs, Affiliates) and reset the Protocol Key to factory default 'NINJA2025'. Proceed?")) {
+      localStorage.clear();
+      window.location.reload();
     }
   };
 
@@ -106,6 +147,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, logs, st
               </button>
             </form>
 
+            <div className="text-center pt-4">
+               {!showRecovery ? (
+                  <button onClick={() => setShowRecovery(true)} className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors">Lost Protocol Key?</button>
+               ) : (
+                  <div className="space-y-3 p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <p className="text-[10px] text-slate-400 font-bold leading-relaxed">
+                      This node uses local persistence. If you have lost your key, a <span className="text-rose-400">System Wipe</span> will reset the key to factory default <span className="text-white">'NINJA2025'</span> but will purge all logs and stats.
+                    </p>
+                    <button onClick={performSystemReset} className="text-[10px] font-black text-rose-500 hover:text-rose-400 uppercase tracking-widest transition-colors flex items-center justify-center gap-2 mx-auto">
+                       <AlertCircle className="w-3 h-3" /> Initiate System Wipe
+                    </button>
+                    <button onClick={() => setShowRecovery(false)} className="text-[9px] font-black text-slate-600 uppercase tracking-widest block w-full">Cancel</button>
+                  </div>
+               )}
+            </div>
+
             <button onClick={onBack} className="w-full text-slate-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">
               Abort to Public View
             </button>
@@ -141,7 +198,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, logs, st
            {[
              { id: 'ANALYTICS', label: 'Analytics' },
              { id: 'AFFILIATES', label: 'Affiliate HQ' },
-             { id: 'SYSTEM', label: 'System Health' }
+             { id: 'SYSTEM', label: 'System Health' },
+             { id: 'SECURITY', label: 'Security' }
            ].map(tab => (
              <button 
                key={tab.id}
@@ -228,6 +286,91 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack, logs, st
             </div>
           </div>
         </>
+      )}
+
+      {activeTab === 'SECURITY' && (
+        <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-bottom-4 duration-500">
+           <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center">
+                    <Key className="w-6 h-6 text-rose-600" />
+                 </div>
+                 <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Protocol Key Management</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Update the Master Override Passcode</p>
+                 </div>
+              </div>
+
+              <form onSubmit={handlePassUpdate} className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Current Key</label>
+                    <input 
+                       type="password"
+                       value={passUpdate.current}
+                       onChange={(e) => setPassUpdate({ ...passUpdate, current: e.target.value })}
+                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 font-black focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500"
+                       placeholder="********"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">New Master Key</label>
+                    <input 
+                       type="password"
+                       value={passUpdate.next}
+                       onChange={(e) => setPassUpdate({ ...passUpdate, next: e.target.value })}
+                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 font-black focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500"
+                       placeholder="Min 4 chars"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Confirm New Key</label>
+                    <input 
+                       type="password"
+                       value={passUpdate.confirm}
+                       onChange={(e) => setPassUpdate({ ...passUpdate, confirm: e.target.value })}
+                       className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 font-black focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500"
+                       placeholder="********"
+                    />
+                 </div>
+                 <div className="md:col-span-3 flex items-center justify-between gap-4">
+                    <div className="flex-1">
+                       {updateError && (
+                         <div className="flex items-center gap-2 text-rose-600 font-bold text-xs">
+                           <AlertCircle className="w-4 h-4" /> {updateError}
+                         </div>
+                       )}
+                       {updateSuccess && (
+                         <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs">
+                           <CheckCircle2 className="w-4 h-4" /> Protocol Key re-calibrated successfully.
+                         </div>
+                       )}
+                    </div>
+                    <button type="submit" className="bg-slate-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl active:scale-95">Update Security Level</button>
+                 </div>
+              </form>
+
+              <div className="bg-amber-50 p-6 rounded-[2rem] border border-amber-100 flex items-start gap-4">
+                 <AlertCircle className="w-6 h-6 text-amber-500 flex-shrink-0 mt-1" />
+                 <div className="space-y-1">
+                    <h4 className="text-sm font-black text-amber-900 uppercase tracking-tight">Security Caution</h4>
+                    <p className="text-xs text-amber-700 leading-relaxed font-medium">Changing the Master Protocol Key is an irreversible action unless you perform a full System Wipe. Ensure your new key is recorded in a secure tactical safe.</p>
+                 </div>
+              </div>
+           </div>
+
+           <div className="bg-slate-900 p-10 rounded-[3rem] shadow-2xl space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                 <AlertCircle className="w-32 h-32 text-rose-500" />
+              </div>
+              <div className="relative z-10 space-y-4">
+                 <h3 className="text-2xl font-black text-white tracking-tight flex items-center gap-3">
+                    <Activity className="w-6 h-6 text-rose-500" /> Danger Zone
+                 </h3>
+                 <p className="text-slate-400 text-sm font-medium">Perform a full atomic reset of this node. All data will be purged.</p>
+                 <button onClick={performSystemReset} className="px-8 py-3 border-2 border-rose-500/50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all">Emergency System Purge</button>
+              </div>
+           </div>
+        </div>
       )}
 
       {activeTab === 'AFFILIATES' && (
