@@ -83,7 +83,6 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
 };
 
 export const analyzeProductCategory = async (query: string): Promise<{ attributes: SpecAttribute[], suggestions: string[], marketGuide: string, defaultValues: Record<string, any>, priceRange: PriceRange, adUnits: AdUnit[], region: RegionInfo }> => {
-  // Always create new instance inside function
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const region = getRegionInfo();
   
@@ -112,7 +111,6 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
 };
 
 export const searchProducts = async (query: string, userValues: Record<string, any>, location?: UserLocation, affiliates?: any): Promise<{ products: Product[], summary: string, sources: { title: string, uri: string }[], region: RegionInfo }> => {
-  // Always create new instance inside function
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const region = getRegionInfo();
   
@@ -124,11 +122,11 @@ export const searchProducts = async (query: string, userValues: Record<string, a
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // High-quality reasoning for value comparison
+      model: 'gemini-3-flash-preview', 
       contents: prompt,
       config: { 
         tools: [{ googleSearch: {} }],
-        temperature: 0.1, // Slight temperature for better reasoning
+        temperature: 0,
         responseMimeType: "application/json"
       }
     });
@@ -147,7 +145,6 @@ export const searchProducts = async (query: string, userValues: Record<string, a
 
     const products = data.products.map((p: any) => {
       let verifiedUrl = p.sourceUrl;
-      // If the model didn't provide a real URL, try to match from grounding chunks
       if (!isRealUrl(verifiedUrl)) {
           const brandLower = (p.brand || "").toLowerCase();
           const nameLower = (p.name || "").toLowerCase();

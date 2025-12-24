@@ -87,36 +87,11 @@ const App: React.FC = () => {
   const [stats, setStats] = useState<AppStats>({ totalMissions: 0, totalValueScouted: 0, lastMissionTime: null, history: [] });
   const [affiliates, setAffiliates] = useState<AffiliateConfig>({ amazonTag: '', ebayId: '', bestBuyId: '', impactId: '' });
   const [adminPasscode, setAdminPasscode] = useState<string>('NINJA2025');
-  const [requiresKeySelection, setRequiresKeySelection] = useState(false);
 
   const addLog = useCallback((msg: string, type: SystemLog['type'] = 'info') => {
     const newLog: SystemLog = { id: Math.random().toString(36).substr(2, 9), time: new Date().toLocaleTimeString(), msg, type };
     setLogs(prev => [newLog, ...prev].slice(0, 50));
   }, []);
-
-  const checkKeyStatus = useCallback(async () => {
-    // @ts-ignore
-    if (window.aistudio) {
-        // @ts-ignore
-        const hasKey = await window.aistudio.hasSelectedApiKey();
-        if (!hasKey && !process.env.API_KEY) {
-            setRequiresKeySelection(true);
-            return false;
-        }
-    }
-    return true;
-  }, []);
-
-  const handleOpenKeySelection = async () => {
-      // @ts-ignore
-      if (window.aistudio) {
-          // @ts-ignore
-          await window.aistudio.openSelectKey();
-          // Mitigate race condition: Assume success and proceed
-          setRequiresKeySelection(false);
-          addLog("Resuming scouting protocol...", "success");
-      }
-  };
 
   const requestLocation = useCallback((): Promise<Partial<UserLocation>> => {
     return new Promise((resolve) => {
@@ -144,17 +119,9 @@ const App: React.FC = () => {
     if (savedStats) setStats(JSON.parse(savedStats));
     const savedAffiliates = localStorage.getItem('valuninja_affiliates');
     if (savedAffiliates) setAffiliates(JSON.parse(savedAffiliates));
-    
-    checkKeyStatus();
-  }, [checkKeyStatus]);
+  }, []);
 
   const handleInitialSearch = async (query: string) => {
-    const keyReady = await checkKeyStatus();
-    if (!keyReady) {
-        addLog("API Key missing. Master Key Selection required.", "error");
-        return;
-    }
-
     let currentLocation = state.location;
 
     if (!state.location.excludeRegionSpecific && !state.location.latitude) {
@@ -181,12 +148,7 @@ const App: React.FC = () => {
       setState(prev => ({ ...prev, stage: 'RESULTS', results: searchRes.products }));
       addLog(`Strike complete. Verified targets identified.`, 'success');
     } catch (error: any) {
-      let msg = error.message;
-      // Handle the specific "Requested entity was not found" error by prompting for key re-selection
-      if (msg.includes("API Key") || msg.includes("Requested entity was not found")) {
-          setRequiresKeySelection(true);
-          msg = "Security link failed. Please select an active API Key from a paid GCP project.";
-      }
+      const msg = error.message || "Mission scouting failed.";
       addLog(`Strike Aborted: ${msg}`, 'error');
       setState(prev => ({ ...prev, stage: 'IDLE', error: `Mission Aborted: ${msg}` }));
     }
@@ -213,37 +175,7 @@ const App: React.FC = () => {
       </nav>
 
       <main className="flex-grow">
-        {requiresKeySelection && (
-            <div className="max-w-4xl mx-auto mt-10 px-6 animate-in zoom-in duration-300">
-                <div className="bg-slate-900 text-white rounded-[2.5rem] p-10 md:p-16 flex flex-col items-center text-center gap-8 shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-12 opacity-10"><Key className="w-48 h-48" /></div>
-                    <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl relative z-10"><Key className="w-10 h-10 text-white" /></div>
-                    <div className="space-y-4 relative z-10 max-w-xl">
-                        <h2 className="text-4xl font-black tracking-tight uppercase">Master Key Selection</h2>
-                        <p className="text-slate-400 font-medium text-lg leading-relaxed">
-                            To get real prices and links securely, ValuNinja requires an active Gemini API Key from a paid project.
-                        </p>
-                        <div className="flex flex-col md:flex-row gap-4 justify-center pt-6">
-                            <button 
-                                onClick={handleOpenKeySelection}
-                                className="px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all shadow-xl active:scale-95"
-                            >
-                                Select Master Key
-                            </button>
-                            <a 
-                                href="https://ai.google.dev/gemini-api/docs/billing" 
-                                target="_blank" rel="noreferrer"
-                                className="px-10 py-5 bg-white/10 hover:bg-white/20 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all flex items-center gap-2"
-                            >
-                                Billing Docs <ExternalLink className="w-4 h-4" />
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {state.error && !requiresKeySelection && (
+        {state.error && (
           <div className="max-w-4xl mx-auto mt-10 px-6">
             <div className="bg-rose-50 border border-rose-200 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-8 shadow-xl">
               <div className="w-16 h-16 bg-rose-600 rounded-2xl flex items-center justify-center flex-shrink-0"><AlertCircle className="w-8 h-8 text-white" /></div>
@@ -258,7 +190,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {!requiresKeySelection && view === 'HOME' && (
+        {view === 'HOME' && (
           <Hero 
             onSearch={handleInitialSearch} 
             isAnalyzing={state.stage === 'ANALYZING' || loadingStep === "Acquiring GPS Target..."} 
@@ -270,7 +202,7 @@ const App: React.FC = () => {
             }} 
           />
         )}
-        {!requiresKeySelection && view === 'RESULTS' && (
+        {view === 'RESULTS' && (
           <ResultsView 
             {...state} 
             products={state.results}
@@ -282,8 +214,6 @@ const App: React.FC = () => {
             sources={sources} 
             onAttributeUpdate={(k, v) => setState(p => ({ ...p, userValues: { ...p.userValues, [k]: v } }))} 
             onRefine={async () => {
-                const keyReady = await checkKeyStatus();
-                if (!keyReady) return;
                 setState(prev => ({ ...prev, stage: 'SEARCHING' }));
                 try {
                   const searchRes = await searchProducts(state.query, state.userValues, state.location, affiliates);
@@ -291,11 +221,7 @@ const App: React.FC = () => {
                   setSources(searchRes.sources);
                   setState(prev => ({ ...prev, stage: 'RESULTS', results: searchRes.products }));
                 } catch (e: any) {
-                  let msg = e.message;
-                  if (msg.includes("Requested entity was not found")) {
-                    setRequiresKeySelection(true);
-                  }
-                  setState(prev => ({ ...prev, stage: 'IDLE', error: msg }));
+                  setState(prev => ({ ...prev, stage: 'IDLE', error: e.message }));
                 }
             }} 
             regionFlag={region.flag} 
