@@ -57,7 +57,6 @@ const ValueIndicator: React.FC<{ score: number, breakdown?: ValueBreakdown, veri
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest cursor-help transition-all hover:scale-105 ${getColor(score)}`}>
                 <TrendingUp className="w-3 h-3" />
                 Score: {score}
-                {/* Fix: Remove unsupported 'title' prop from ShieldCheck icon and wrap it in a span for tooltip support */}
                 {verified && (
                   <span title="Scout Verified Intel" className="flex items-center">
                     <ShieldCheck className="w-3 h-3 text-emerald-500 ml-1" />
@@ -134,14 +133,29 @@ const AdCard: React.FC<{ ad: AdUnit }> = ({ ad }) => (
   </div>
 );
 
-const AdSection: React.FC<{ adContent?: AdUnit[] }> = ({ adContent }) => {
+const AdSenseUnit: React.FC<{ slotId?: string, className?: string }> = ({ slotId = "DEFAULT_SLOT", className }) => {
   useEffect(() => {
     try {
       // @ts-ignore
       (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch (e) {}
+    } catch (e) {
+      console.debug('AdSense init delayed or failed', e);
+    }
   }, []);
 
+  return (
+    <div className={`bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] flex items-center justify-center p-6 overflow-hidden min-h-[250px] ${className || 'w-full'}`}>
+      <ins className="adsbygoogle"
+           style={{ display: 'block', width: '100%', height: '100%', minHeight: '200px' }}
+           data-ad-client="ca-pub-7036070872302532"
+           data-ad-slot={slotId}
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>
+  );
+};
+
+const AdSection: React.FC<{ adContent?: AdUnit[] }> = ({ adContent }) => {
   return (
     <div className="bg-indigo-50/50 border border-indigo-100 rounded-[3rem] p-10 md:p-14 relative overflow-hidden my-12">
       <div className="absolute top-0 right-0 p-12 opacity-5">
@@ -154,24 +168,21 @@ const AdSection: React.FC<{ adContent?: AdUnit[] }> = ({ adContent }) => {
             <Megaphone className="w-7 h-7 text-white" />
           </div>
           <div>
-            <h3 className="text-3xl font-black text-slate-900 tracking-tighter">Sponsored Recon</h3>
-            <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500">Partner Missions & Global Deals</p>
+            <h3 className="text-3xl font-black text-slate-900 tracking-tighter">Sponsored Recon Hub</h3>
+            <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500">Global Tactical Partner Matrix</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 relative z-10">
-        {adContent && adContent.map((ad, i) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative z-10">
+        {adContent && adContent.slice(0, 4).map((ad, i) => (
           <AdCard key={i} ad={ad} />
         ))}
-        <div className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] flex items-center justify-center p-6 min-h-[350px]">
-           <ins className="adsbygoogle"
-                style={{ display: 'block', width: '100%', height: '100%' }}
-                data-ad-client="ca-pub-YOUR_PUBLISHER_ID"
-                data-ad-slot="YOUR_AD_SLOT_ID"
-                data-ad-format="auto"
-                data-full-width-responsive="true"></ins>
-        </div>
+        {/* AdSense filling out the 4-column grid at the bottom */}
+        <AdSenseUnit slotId="BOTTOM_PAGE_UNIT_1" />
+        <AdSenseUnit slotId="BOTTOM_PAGE_UNIT_2" />
+        <AdSenseUnit slotId="BOTTOM_PAGE_UNIT_3" />
+        <AdSenseUnit slotId="BOTTOM_PAGE_UNIT_4" />
       </div>
     </div>
   );
@@ -205,8 +216,9 @@ const MissionControlCenter: React.FC<{
   marketGuide?: string, 
   attributes: SpecAttribute[], 
   isLoading: boolean,
-  location?: UserLocation
-}> = ({ message, query, marketGuide, attributes, isLoading, location }) => {
+  location?: UserLocation,
+  sources?: { title: string, uri: string }[]
+}> = ({ message, query, marketGuide, attributes, isLoading, location, sources = [] }) => {
   const protocolMessage = location?.excludeRegionSpecific 
     ? "GLOBAL_DISTRIBUTION_NETWORK_ACTIVE • Skipping physical local nodes for pure online pricing." 
     : location?.localOnly 
@@ -255,7 +267,7 @@ const MissionControlCenter: React.FC<{
             </div>
             <div className="space-y-2">
               <h3 className="text-4xl md:text-6xl font-black text-white tracking-tighter">
-                {isLoading ? 'Active Recon Mission' : 'Mission Recon Complete'}: <span className="text-indigo-400">{query}</span>
+                {isLoading ? 'Active Recon Mission' : 'Mission Recon Complete'}: <span className="text-indigo-400 uppercase">{query}</span>
               </h3>
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-4">
                  <span className="flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 rounded-full text-indigo-400 text-[10px] font-black uppercase tracking-widest border border-indigo-500/20">
@@ -283,6 +295,36 @@ const MissionControlCenter: React.FC<{
           )}
         </div>
 
+        {/* Full 4-Unit Ad Matrix - Active only during searching to capture high intent */}
+        {isLoading && (
+          <div className="space-y-6 pt-4 animate-in slide-in-from-bottom-8 duration-1000">
+             <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                   <Megaphone className="w-4 h-4 text-white" />
+                </div>
+                <div className="text-left">
+                   <h4 className="text-sm font-black text-white uppercase tracking-tight">Strike Partner Opportunities</h4>
+                   <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Active Scouting for relevant tactical deals for "{query}"</p>
+                </div>
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 p-2 overflow-hidden shadow-2xl transition-all hover:bg-white/10">
+                   <AdSenseUnit slotId="LOADING_PHASE_1" className="bg-transparent border-none min-h-[250px]" />
+                </div>
+                <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 p-2 overflow-hidden shadow-2xl transition-all hover:bg-white/10 hidden md:block">
+                   <AdSenseUnit slotId="LOADING_PHASE_2" className="bg-transparent border-none min-h-[250px]" />
+                </div>
+                <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 p-2 overflow-hidden shadow-2xl transition-all hover:bg-white/10 hidden md:block">
+                   <AdSenseUnit slotId="LOADING_PHASE_3" className="bg-transparent border-none min-h-[250px]" />
+                </div>
+                <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 p-2 overflow-hidden shadow-2xl transition-all hover:bg-white/10 hidden lg:block">
+                   <AdSenseUnit slotId="LOADING_PHASE_4" className="bg-transparent border-none min-h-[250px]" />
+                </div>
+             </div>
+          </div>
+        )}
+
         {marketGuide && (
           <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 p-8 md:p-12 relative overflow-hidden group">
              <div className="absolute top-0 right-0 p-8 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
@@ -291,7 +333,7 @@ const MissionControlCenter: React.FC<{
              
              <div className="flex flex-col gap-8 relative z-10">
                 <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 bg-indigo-500 rounded-2xl flex items-center justify-center shadow-lg">
+                   <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center shadow-lg">
                       <ScrollText className="w-6 h-6 text-white" />
                    </div>
                    <div className="flex-1 text-left">
@@ -316,6 +358,34 @@ const MissionControlCenter: React.FC<{
                      </div>
                    ))}
                 </div>
+             </div>
+          </div>
+        )}
+
+        {!isLoading && sources && sources.length > 0 && (
+          <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 p-8 relative overflow-hidden">
+             <div className="flex items-center gap-4 mb-6">
+                <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center">
+                   <Link2 className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div>
+                   <h4 className="text-sm font-black text-white uppercase tracking-tight">Grounding Intelligence Sources</h4>
+                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Verified Multi-Source Recon Data</p>
+                </div>
+             </div>
+             <div className="flex flex-wrap gap-3">
+                {sources.map((source, idx) => (
+                   <a 
+                     key={idx} 
+                     href={source.uri} 
+                     target="_blank" 
+                     rel="noopener noreferrer"
+                     className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-indigo-500/10 rounded-xl text-[11px] font-bold text-indigo-300 transition-all border border-white/5 hover:border-indigo-500/30"
+                   >
+                     <ExternalLink className="w-3 h-3" />
+                     <span className="truncate max-w-[200px]">{source.title || source.uri}</span>
+                   </a>
+                ))}
              </div>
           </div>
         )}
@@ -403,6 +473,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               attributes={attributes}
               isLoading={isTransitioning}
               location={location}
+              sources={sources}
            />
         )}
 
@@ -421,7 +492,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                     <div className="inline-flex items-center space-x-3 bg-emerald-500 text-slate-900 px-6 py-3 rounded-full text-[11px] font-black uppercase mb-10 shadow-2xl">
                         <Award className="w-5 h-5" /> <span>Ultimate Value King Identified</span>
                     </div>
-                    <h1 className="text-5xl md:text-8xl font-black mb-8 tracking-tighter leading-none">{topProduct.name}</h1>
+                    <h1 className="text-5xl md:text-8xl font-black mb-8 tracking-tighter leading-none uppercase">{topProduct.name}</h1>
                     <div className="flex flex-wrap items-center gap-6 mb-10">
                         <span className="flex items-center gap-3 px-6 py-2.5 bg-white/10 rounded-2xl text-[13px] font-black border border-white/10 tracking-widest uppercase">
                             <Store className="w-5 h-5 text-indigo-400" />
@@ -456,15 +527,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
               </div>
             )}
 
-            <AdSection adContent={adContent} />
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                 {otherProducts.map(product => (
                     <div key={product.id} className="bg-white rounded-[3rem] border border-slate-200 shadow-sm p-10 flex flex-col hover:border-indigo-400 transition-all hover:shadow-2xl group">
                         <div className="flex justify-between items-start mb-8">
                             <div className="flex-1">
-                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 group-hover:text-indigo-500 transition-colors">{product.brand}</span>
-                                <h3 className="font-black text-slate-900 leading-tight text-xl line-clamp-2">{product.name}</h3>
+                                <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2 group-hover:text-indigo-500 transition-colors uppercase">{product.brand}</span>
+                                <h3 className="font-black text-slate-900 leading-tight text-xl line-clamp-2 uppercase">{product.name}</h3>
                             </div>
                             <div className="text-3xl font-black text-slate-900 pl-6">{getDisplayCurrency(product.currency)}{product.price?.toLocaleString()}</div>
                         </div>
@@ -543,36 +612,39 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                   </table>
                </div>
             </div>
-          </div>
-        )}
 
-        {!isTransitioning && (
-          <div className="bg-white rounded-[3.5rem] shadow-2xl border-4 border-slate-900 p-12 md:p-20 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-12 opacity-5">
-                <NinjaIcon className="w-80 h-80 text-slate-900" />
-             </div>
-             <div className="relative z-10">
-                <div className="flex items-center gap-6 mb-12 pb-8 border-b border-slate-100">
-                    <div className="w-16 h-16 bg-slate-900 rounded-[2rem] flex items-center justify-center shadow-2xl">
-                      <SlidersHorizontal className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Mission Re-calibration</h3>
-                      <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1">Tuning Scouting Parameters for Higher Precision</p>
-                    </div>
+            {/* Bottom-loaded ad grid ensuring the results page is also monetized */}
+            <AdSection adContent={adContent} />
+
+            {!isTransitioning && (
+              <div className="bg-white rounded-[3.5rem] shadow-2xl border-4 border-slate-900 p-12 md:p-20 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-12 opacity-5">
+                    <NinjaIcon className="w-80 h-80 text-slate-900" />
                 </div>
-                <AttributeForm 
-                  suggestions={suggestions} 
-                  userValues={userValues} 
-                  onUpdateValue={onAttributeUpdate} 
-                  onSubmit={onRefine} 
-                  isSearching={isSearching || isLoadingProducts} 
-                  priceRange={priceRange} 
-                  location={location}
-                  onLocationRequest={onLocationRequest}
-                  onLocationUpdate={onLocationUpdate}
-                />
-             </div>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-6 mb-12 pb-8 border-b border-slate-100">
+                        <div className="w-16 h-16 bg-slate-900 rounded-[2rem] flex items-center justify-center shadow-2xl">
+                          <SlidersHorizontal className="w-8 h-8 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-4xl font-black text-slate-900 tracking-tighter">Mission Re-calibration</h3>
+                          <p className="text-slate-500 font-bold uppercase tracking-widest text-xs mt-1">Tuning Scouting Parameters for Higher Precision</p>
+                        </div>
+                    </div>
+                    <AttributeForm 
+                      suggestions={suggestions} 
+                      userValues={userValues} 
+                      onUpdateValue={onAttributeUpdate} 
+                      onSubmit={onRefine} 
+                      isSearching={isSearching || isLoadingProducts} 
+                      priceRange={priceRange} 
+                      location={location}
+                      onLocationRequest={onLocationRequest}
+                      onLocationUpdate={onLocationUpdate}
+                    />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
