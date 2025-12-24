@@ -2,29 +2,56 @@
 import { GoogleGenAI } from "@google/genai";
 import { SpecAttribute, Product, AttributeType, PriceRange, RetailerLink, AdUnit, UserLocation } from "../types";
 
-// Always use process.env.API_KEY directly for initialization as per guidelines.
+// The API key is sourced exclusively from the environment.
 const getAI = () => {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    console.error("ValuNinja Error: API_KEY is missing from the environment.");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || "" });
 };
 
+/**
+ * Robust JSON cleaner that handles markdown blocks, trailing commas, 
+ * and model chatter before/after the JSON block.
+ */
 const cleanAndParseJSON = (text: string) => {
   if (!text) return null;
   try {
-    const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-    let target = text;
-    if (jsonMatch) {
-      target = jsonMatch[1];
-    } else {
-      const firstBrace = text.indexOf('{');
-      const lastBrace = text.lastIndexOf('}');
-      if (firstBrace !== -1 && lastBrace !== -1) {
-        target = text.substring(firstBrace, lastBrace + 1);
-      }
-    }
-    return JSON.parse(target);
+    // Attempt 1: Direct parse
+    return JSON.parse(text);
   } catch (e) {
-    console.error("ValuNinja Parser Error:", e, "Payload:", text);
-    return null;
+    try {
+      // Attempt 2: Extract from markdown code blocks
+      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      let target = text;
+      if (jsonMatch) {
+        target = jsonMatch[1];
+      } else {
+        // Attempt 3: Find first { and last }
+        const firstBrace = text.indexOf('{');
+        const lastBrace = text.lastIndexOf('}');
+        const firstBracket = text.indexOf('[');
+        const lastBracket = text.lastIndexOf(']');
+        
+        const start = (firstBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) ? firstBrace : firstBracket;
+        const end = (lastBrace !== -1 && (lastBracket === -1 || lastBrace > lastBracket)) ? lastBrace : lastBracket;
+
+        if (start !== -1 && end !== -1) {
+          target = text.substring(start, end + 1);
+        }
+      }
+      
+      // Clean up common issues like trailing commas before closing braces
+      const cleaned = target
+        .replace(/,\s*([\]}])/g, '$1')
+        .replace(/(\r\n|\n|\r)/gm, " ");
+        
+      return JSON.parse(cleaned);
+    } catch (innerError) {
+      console.error("ValuNinja Parser Critical Failure:", innerError, "Payload:", text);
+      return null;
+    }
   }
 };
 
@@ -78,11 +105,10 @@ const isRealUrl = (url: string | undefined): boolean => {
 
 const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, affiliates?: any): RetailerLink[] => {
   const links: RetailerLink[] = [];
+  const query = encodeURIComponent(`${product.brand} ${product.name}`);
   
-  // PRIMARY SCOUT LINK (MANDATORY)
   if (product.sourceUrl && isRealUrl(product.sourceUrl)) {
     let finalUrl = product.sourceUrl;
-    // Basic affiliate injection if it matches standard patterns
     if (affiliates?.impactId && !finalUrl.includes('amazon')) {
       finalUrl += (finalUrl.includes('?') ? '&' : '?') + `irclickid=${affiliates.impactId}`;
     }
@@ -94,11 +120,8 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
     });
   }
 
-  // TACTICAL SECONDARY HUB
-  const query = encodeURIComponent(`${product.brand} ${product.name}`);
   links.push({ name: 'Market Discovery Hub', url: `https://www.google.com/search?q=${query}&tbm=shop`, icon: 'maps' });
 
-  // REGIONAL PRIME SCAN
   let amzUrl = `https://www.${region.domain}/s?k=${query}`;
   if (affiliates?.amazonTag) amzUrl += `&tag=${affiliates.amazonTag}`;
   links.push({ name: 'Amazon Quick Scan', url: amzUrl, icon: 'amazon' });
@@ -112,30 +135,40 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `Analyze user search: "${query}" in ${region.countryName}. 
+    contents: `Mission: Analyze "${query}" in ${region.countryName}. 
+    Define 4 key technical attributes to compare for this product/service. 
     
-    Output JSON with EXACT keys:
-    - attributes: array of objects {key, label, type, defaultValue}
-    - marketGuide: a string of tactical buying advice (max 200 words). MANDATORY.
-    - suggestions: array of string specs to look for
-    - priceRange: {min, max, currency}
-    - adUnits: 2 objects {brand, headline, description, cta}
-    `,
+    Return strictly JSON:
+    {
+      "attributes": [{"key": "string", "label": "string", "type": "NUMBER|STRING|BOOLEAN", "defaultValue": "any"}],
+      "marketGuide": "2-3 sentences of tactical advice",
+      "suggestions": ["specific spec 1", "specific spec 2"],
+      "priceRange": {"min": number, "max": number, "currency": "string"},
+      "adUnits": [{"brand": "string", "headline": "string", "description": "string", "cta": "string"}]
+    }`,
     config: { temperature: 0, responseMimeType: "application/json" }
   });
 
-  const data = JSON.parse(response.text || '{}');
+  const data = cleanAndParseJSON(response.text || '{}');
+  if (!data) throw new Error("Category analysis failed to return valid data.");
+
   const attributes = (data.attributes || []).map((attr: any) => ({
     ...attr,
     type: attr.type === 'NUMBER' ? AttributeType.NUMBER : (attr.type === 'BOOLEAN' ? AttributeType.BOOLEAN : AttributeType.STRING)
   }));
   
-  const marketGuide = data.marketGuide || `Tactical analysis for ${query} is active. Scouting based on high-performance specifications and market availability in ${region.countryName}.`;
-  
   const defaultValues: Record<string, any> = { minPrice: 0, maxPrice: null, customQuery: '' };
-  attributes.forEach((a: any) => { if (a.defaultValue) defaultValues[a.key] = a.defaultValue; });
+  attributes.forEach((a: any) => { if (a.defaultValue !== undefined) defaultValues[a.key] = a.defaultValue; });
 
-  return { attributes, suggestions: data.suggestions || [], marketGuide, defaultValues, priceRange: data.priceRange, adUnits: data.adUnits || [], region };
+  return { 
+    attributes, 
+    suggestions: data.suggestions || [], 
+    marketGuide: data.marketGuide || "Tactical scouting active.", 
+    defaultValues, 
+    priceRange: data.priceRange || { min: 0, max: 5000, currency: region.currencySymbol }, 
+    adUnits: data.adUnits || [], 
+    region 
+  };
 };
 
 export const searchProducts = async (query: string, userValues: Record<string, any>, location?: UserLocation, affiliates?: any): Promise<{ products: Product[], summary: string, sources: { title: string, uri: string }[], region: RegionInfo }> => {
@@ -143,25 +176,27 @@ export const searchProducts = async (query: string, userValues: Record<string, a
   const ai = getAI();
   
   const prompt = `
-    Mission: Identify top 4 specific products or services (e.g., exact cruise packages, laptops, hotels) for: "${query}" in ${region.countryName}.
-    Filters: ${JSON.stringify(userValues)}
+    Mission: Identify top 4 specific options for: "${query}" in ${region.countryName}.
+    Parameters: ${JSON.stringify(userValues)}
+    Location Context: ${location?.zipCode ? `Targeting ${location.zipCode}` : 'Global/Remote'}
     
-    CRITICAL INSTRUCTION: For EVERY result, you MUST provide the exact URL ('sourceUrl') where this pricing or package was identified. Do not provide placeholder links. Use Google Search grounding to find the real merchant page.
-    
-    Output strictly as JSON.
+    You MUST use Google Search grounding to find REAL current pricing and merchant URLs.
+    DO NOT provide placeholder URLs. If a specific merchant link is unavailable, provide the most relevant search hub link.
+
+    Output STRICTLY as JSON:
     {
-      "summary": "Overall market status",
+      "summary": "Brief tactical overview of current market status",
       "products": [{
-        "brand": "Brand or Provider", 
-        "name": "Exact Product/Package Name", 
+        "brand": "Provider/Manufacturer", 
+        "name": "Model/Package Name", 
         "price": number, 
         "currency": "${region.currencySymbol}", 
         "storeName": "Merchant Name",
-        "sourceUrl": "MANDATORY: REAL URL to merchant/booking page",
-        "description": "Short tactical analysis", 
-        "specs": {}, 
-        "pros": [], 
-        "cons": [], 
+        "sourceUrl": "REAL merchant URL",
+        "description": "Tactical reason for inclusion", 
+        "specs": {"Key Attribute": "Value"}, 
+        "pros": ["Benefit"], 
+        "cons": ["Trade-off"], 
         "valueScore": 1-100,
         "valueBreakdown": {
           "performance": 1-10, "buildQuality": 1-10, "featureSet": 1-10, "reliability": 1-10, 
@@ -174,17 +209,17 @@ export const searchProducts = async (query: string, userValues: Record<string, a
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', 
+      model: 'gemini-3-flash-preview', // Flash is faster and less prone to timeout for heavy grounding tasks
       contents: prompt,
       config: { 
         tools: [{ googleSearch: {} }],
         temperature: 0,
-        thinkingConfig: { thinkingBudget: 8192 }
+        responseMimeType: "application/json"
       }
     });
 
     const data = cleanAndParseJSON(response.text || '');
-    if (!data || !Array.isArray(data.products)) throw new Error("Scout telemetry corrupted.");
+    if (!data || !Array.isArray(data.products)) throw new Error("Market scouting data corrupted.");
 
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const groundingSources = chunks.map(c => {
@@ -201,7 +236,6 @@ export const searchProducts = async (query: string, userValues: Record<string, a
         ergonomics: 7, dealStrength: 7 
       };
       
-      // Attempt to verify/refine sourceUrl if the model provided one, or match from grounding
       let verifiedUrl = p.sourceUrl;
       if (!isRealUrl(verifiedUrl)) {
           const brandLower = (p.brand || "").toLowerCase();
@@ -212,7 +246,7 @@ export const searchProducts = async (query: string, userValues: Record<string, a
       return {
           ...p,
           id: Math.random().toString(36).substr(2, 9),
-          sourceUrl: verifiedUrl,
+          sourceUrl: isRealUrl(verifiedUrl) ? verifiedUrl : `https://www.google.com/search?q=${encodeURIComponent(p.brand + ' ' + p.name)}`,
           specs: p.specs || {},
           pros: Array.isArray(p.pros) ? p.pros : [],
           cons: Array.isArray(p.cons) ? p.cons : [],
@@ -223,5 +257,8 @@ export const searchProducts = async (query: string, userValues: Record<string, a
     });
 
     return { products, summary: data.summary || "Strike results generated.", sources: groundingSources, region };
-  } catch (error: any) { throw error; }
+  } catch (error: any) { 
+    console.error("Search Service Failure:", error);
+    throw error; 
+  }
 };

@@ -57,7 +57,12 @@ const ValueIndicator: React.FC<{ score: number, breakdown?: ValueBreakdown, veri
             <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest cursor-help transition-all hover:scale-105 ${getColor(score)}`}>
                 <TrendingUp className="w-3 h-3" />
                 Score: {score}
-                {verified && <ShieldCheck className="w-3 h-3 text-emerald-500 ml-1" title="Scout Verified Intel" />}
+                {/* Fix: Remove unsupported 'title' prop from ShieldCheck icon and wrap it in a span for tooltip support */}
+                {verified && (
+                  <span title="Scout Verified Intel" className="flex items-center">
+                    <ShieldCheck className="w-3 h-3 text-emerald-500 ml-1" />
+                  </span>
+                )}
             </div>
             {breakdown && (
                 <div className="absolute top-full right-0 mt-2 w-72 p-6 bg-white border border-slate-200 rounded-[2.5rem] shadow-2xl opacity-0 group-hover:opacity-100 transition-all duration-300 z-30 pointer-events-none scale-95 group-hover:scale-100 origin-top-right">
