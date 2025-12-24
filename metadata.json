@@ -1,0 +1,7 @@
+{
+  "name": "ValuNinja",
+  "description": "An intelligent product comparison engine that dynamically generates technical specifications based on your search, allowing for deep, customizable product discovery and comparison using real-time data.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
