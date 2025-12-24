@@ -10,8 +10,9 @@ const getAI = () => {
 };
 
 const cleanAndParseJSON = (text: string) => {
+  if (!text) return null;
   try {
-    // Attempt to find JSON block
+    // Standard block extraction
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     let target = text;
     if (jsonMatch) {
@@ -23,10 +24,9 @@ const cleanAndParseJSON = (text: string) => {
         target = text.substring(firstBrace, lastBrace + 1);
       }
     }
-    const parsed = JSON.parse(target);
-    return parsed;
+    return JSON.parse(target);
   } catch (e) {
-    console.error("Critical JSON Parse Error:", e, "Raw Text:", text);
+    console.error("ValuNinja Parser Error:", e, "Payload:", text);
     return null;
   }
 };
@@ -129,12 +129,13 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
-    contents: `User in ${region.countryName} looking for: "${query}". Generate attributes, tactical brief, suggestions, price range, and 2 search-relevant ad units.`,
+    contents: `Analyze user search: "${query}". Generate product attributes, a brief tactical guide, suggestions, price range, and 2 ad units for ${region.countryName}.`,
     config: {
       temperature: 0,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
+        required: ["marketGuide", "suggestions", "attributes", "priceRange"],
         properties: {
           marketGuide: { type: Type.STRING },
           suggestions: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -191,14 +192,16 @@ export const searchProducts = async (query: string, userValues: Record<string, a
   const ai = getAI();
   const region = getRegionInfo();
   
+  console.log("ValuNinja Mission: Deploying Pro Scout for", query);
+
   const prompt = `
-    Mission: Search for top 4 real products matching: "${query}" in ${region.countryName}.
+    Mission: Search for top 4 real-world products matching: "${query}" for a user in ${region.countryName}.
     Required Protocol:
-    1. Scan Google for real prices and merchants.
-    2. Focus on value for money.
+    1. Scan Google for real pricing and retailers.
+    2. Focus on products currently available.
     3. Output strictly valid JSON.
     
-    JSON Schema:
+    Expected Structure:
     {
       "products": [{
         "brand": "string",
@@ -206,7 +209,7 @@ export const searchProducts = async (query: string, userValues: Record<string, a
         "price": number,
         "currency": "${region.currencySymbol}",
         "storeName": "string",
-        "description": "brief description",
+        "description": "short analysis",
         "specs": {},
         "pros": [],
         "cons": [],
@@ -216,18 +219,20 @@ export const searchProducts = async (query: string, userValues: Record<string, a
           "efficiency": 1-10, "innovation": 1-10, "longevity": 1-10, "ergonomics": 1-10, "dealStrength": 1-10
         }
       }],
-      "summary": "market summary"
+      "summary": "overall market sentiment"
     }
 
-    User Filters: ${JSON.stringify(userValues)}
+    Scout Parameters: ${JSON.stringify(userValues)}
+    Tactical Constraint: If you find fewer than 4 items, return only those found.
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview', 
+    model: 'gemini-3-pro-preview', 
     contents: prompt,
     config: { 
       tools: [{ googleSearch: {} }],
-      temperature: 0
+      temperature: 0,
+      thinkingConfig: { thinkingBudget: 4096 }
     }
   });
 
@@ -241,22 +246,25 @@ export const searchProducts = async (query: string, userValues: Record<string, a
 
   const data = cleanAndParseJSON(response.text || '');
   if (!data || !Array.isArray(data.products)) {
-    throw new Error("Tactical reconnaissance failed. AI returned malformed output.");
+    console.warn("ValuNinja: Malformed AI response, retrying with dummy data if in dev or failing.");
+    throw new Error("Mission Failed: Scout returned unreadable telemetry.");
   }
 
   const products = data.products.map((p: any) => {
-    // Robust breakdown fallback
-    const defaultBreakdown = {
+    // Robust breakdown fallback to prevent UI crashes
+    const baseline = {
       performance: 7, buildQuality: 7, featureSet: 7, reliability: 7, userSatisfaction: 7,
       efficiency: 7, innovation: 7, longevity: 7, ergonomics: 7, dealStrength: 7
     };
+    const breakdown = { ...baseline, ...(p.valueBreakdown || {}) };
 
-    const breakdown = p.valueBreakdown || {};
-    const finalBreakdown = { ...defaultBreakdown, ...breakdown };
-
+    const brand = p.brand || "";
+    const name = p.name || "";
+    
+    // Attempt URL matching
     const bestMatch = groundingSources.find(src => 
-      (p.brand && src.title.toLowerCase().includes(p.brand.toLowerCase())) || 
-      (p.name && src.title.toLowerCase().includes(p.name.toLowerCase().split(' ')[0]))
+      (brand && src.title.toLowerCase().includes(brand.toLowerCase())) || 
+      (name && src.title.toLowerCase().includes(name.toLowerCase().split(' ')[0]))
     );
 
     const verifiedUrl = bestMatch ? bestMatch.uri : undefined;
@@ -266,13 +274,13 @@ export const searchProducts = async (query: string, userValues: Record<string, a
         id: Math.random().toString(36).substr(2, 9),
         directUrl: verifiedUrl,
         specs: p.specs || {},
-        pros: p.pros || [],
-        cons: p.cons || [],
-        valueScore: p.valueScore || 70,
-        valueBreakdown: finalBreakdown,
+        pros: Array.isArray(p.pros) ? p.pros : [],
+        cons: Array.isArray(p.cons) ? p.cons : [],
+        valueScore: p.valueScore || 75,
+        valueBreakdown: breakdown,
         retailers: generateRetailerLinks({ ...p, directUrl: verifiedUrl }, region, affiliates)
     };
   });
 
-  return { products, summary: data.summary || "Ready.", sources: groundingSources, region };
+  return { products, summary: data.summary || "Strike successful.", sources: groundingSources, region };
 };
