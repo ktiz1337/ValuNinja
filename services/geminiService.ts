@@ -2,10 +2,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { SpecAttribute, Product, AttributeType, PriceRange, RetailerLink, AdUnit, UserLocation } from "../types";
 
-/**
- * Robust JSON cleaner that handles markdown blocks, trailing commas, 
- * and model chatter before/after the JSON block.
- */
 const cleanAndParseJSON = (text: string) => {
   if (!text) return null;
   try {
@@ -54,27 +50,6 @@ export const getRegionInfo = (): RegionInfo => {
   }
 };
 
-export const resolveRegionFromLocation = async (lat: number, lng: number): Promise<RegionInfo | null> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) return null;
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Identify the country for location: Lat ${lat}, Lng ${lng}. Return JSON with countryName, flag, domain, and currencySymbol.`,
-      config: { temperature: 0, responseMimeType: "application/json" }
-    });
-    const data = JSON.parse(response.text || '{}');
-    return {
-      countryName: data.countryName,
-      flag: data.flag,
-      domain: data.domain,
-      currencySymbol: data.currencySymbol,
-      bestBuyDomain: data.domain.includes('.ca') ? 'bestbuy.ca' : (data.domain.includes('.com') ? 'bestbuy.com' : undefined)
-    };
-  } catch (e) { return null; }
-};
-
 const isRealUrl = (url: string | undefined): boolean => {
     if (!url) return false;
     if (!url.startsWith('http')) return false;
@@ -98,17 +73,12 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
 };
 
 export const analyzeProductCategory = async (query: string): Promise<{ attributes: SpecAttribute[], suggestions: string[], marketGuide: string, defaultValues: Record<string, any>, priceRange: PriceRange, adUnits: AdUnit[], region: RegionInfo }> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey === "undefined" || apiKey.length < 5) {
-    throw new Error("API_KEY_MISSING");
-  }
-  
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const region = getRegionInfo();
   
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-3-pro-image-preview',
       contents: `Mission: Analyze "${query}" in ${region.countryName}. Define 4 key technical attributes to compare for this product/service. Return strictly JSON: {"attributes": [{"key": "string", "label": "string", "type": "NUMBER|STRING|BOOLEAN", "defaultValue": "any"}],"marketGuide": "2-3 sentences of tactical advice","suggestions": ["specific spec 1", "specific spec 2"],"priceRange": {"min": number, "max": number, "currency": "string"},"adUnits": [{"brand": "string", "headline": "string", "description": "string", "cta": "string"}]}`,
       config: { temperature: 0, responseMimeType: "application/json" }
     });
@@ -131,19 +101,14 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
 };
 
 export const searchProducts = async (query: string, userValues: Record<string, any>, location?: UserLocation, affiliates?: any): Promise<{ products: Product[], summary: string, sources: { title: string, uri: string }[], region: RegionInfo }> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey || apiKey === "undefined" || apiKey.length < 5) {
-    throw new Error("API_KEY_MISSING");
-  }
-  
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const region = getRegionInfo();
   
   const prompt = `Mission: Identify top 4 specific options for: "${query}" in ${region.countryName}. Parameters: ${JSON.stringify(userValues)}. Location Context: ${location?.zipCode ? `Targeting ${location.zipCode}` : 'Global/Remote'}. You MUST use Google Search grounding to find REAL current pricing and merchant URLs. Output STRICTLY as JSON: {"summary": "Tactical overview", "products": [{"brand": "Provider", "name": "Model", "price": number, "currency": "${region.currencySymbol}", "storeName": "Merchant", "sourceUrl": "REAL URL", "description": "Reason", "specs": {"Key": "Value"}, "pros": ["Benefit"], "cons": ["Trade-off"], "valueScore": 1-100, "valueBreakdown": {"performance": 1-10, "buildQuality": 1-10, "featureSet": 1-10, "reliability": 1-10, "userSatisfaction": 1-10, "efficiency": 1-10, "innovation": 1-10, "longevity": 1-10, "ergonomics": 1-10, "dealStrength": 1-10}}]}`;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview', 
+      model: 'gemini-3-pro-image-preview', 
       contents: prompt,
       config: { 
         tools: [{ googleSearch: {} }],

@@ -6,20 +6,10 @@ import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { AboutUs } from './components/AboutUs';
 import { TermsOfService } from './components/TermsOfService';
 import { AdminDashboard } from './components/AdminDashboard';
-import { analyzeProductCategory, searchProducts, getRegionInfo, resolveRegionFromLocation } from './services/geminiService';
+import { analyzeProductCategory, searchProducts } from './services/geminiService';
 import { SearchState, AdUnit, Product, UserLocation } from './types';
 import { NinjaIcon } from './components/NinjaIcon';
-import { ShieldCheck, Award, Heart, ShieldAlert, ChevronLeft, X, Info, Terminal, Activity, Zap, Cpu, Globe, AlertCircle, Key, Lock, ArrowRight, ExternalLink } from 'lucide-react';
-
-declare global {
-  interface AIStudio {
-    hasSelectedApiKey: () => Promise<boolean>;
-    openSelectKey: () => Promise<void>;
-  }
-  interface Window {
-    aistudio?: AIStudio;
-  }
-}
+import { ShieldCheck, Award, AlertCircle, Terminal, Activity, Zap, Cpu } from 'lucide-react';
 
 type View = 'HOME' | 'PRIVACY' | 'ABOUT' | 'TERMS' | 'RESULTS' | 'ADMIN';
 
@@ -47,6 +37,7 @@ interface AffiliateConfig {
 const BootSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
   const steps = ["Ronin OS Phase 1...", "Initialising Hybrid Nodes...", "Verifying Gemini Core...", "Strike Protocol Ready"];
+  
   useEffect(() => {
     const timer = setInterval(() => {
       setStep(s => {
@@ -60,6 +51,7 @@ const BootSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     }, 400);
     return () => clearInterval(timer);
   }, [onComplete]);
+
   return (
     <div className="fixed inset-0 z-[200] bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
       <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-2xl animate-pulse">
@@ -82,7 +74,7 @@ const App: React.FC = () => {
     results: [], 
     location: { 
       excludeRegionSpecific: false, 
-      localOnly: false, // HYBRID is Local+Global (Both false)
+      localOnly: false,
       radius: 50,
       zipCode: '' 
     }
@@ -109,14 +101,6 @@ const App: React.FC = () => {
     if (!isBooting) addLog('Phase 1 Launch Protocol: Active.', 'info');
   }, [addLog, isBooting]);
 
-  const handleOpenKey = async () => {
-    if (window.aistudio?.openSelectKey) {
-      await window.aistudio.openSelectKey();
-      setState(prev => ({ ...prev, error: undefined }));
-      addLog('System: Secure Uplink Bridge re-established.', 'success');
-    }
-  };
-
   const handleInitialSearch = async (query: string) => {
     setState(prev => ({ ...prev, query, stage: 'ANALYZING', error: undefined, results: [] }));
     setView('RESULTS');
@@ -134,7 +118,11 @@ const App: React.FC = () => {
     } catch (error: any) {
       const msg = error.message;
       addLog(`Mission Failure: ${msg}`, 'error');
-      setState(prev => ({ ...prev, stage: 'IDLE', error: msg === "API_KEY_MISSING" ? "Uplink Lost: Secure Connection required." : `Mission aborted: ${msg}` }));
+      setState(prev => ({ 
+        ...prev, 
+        stage: 'IDLE', 
+        error: `Mission aborted: ${msg}. Please verify your environment setup.`
+      }));
     }
   };
 
@@ -166,10 +154,7 @@ const App: React.FC = () => {
                 <h3 className="text-xl font-black text-rose-900 uppercase tracking-tight">Strike Aborted</h3>
                 <p className="text-rose-700 font-bold leading-relaxed">{state.error}</p>
                 <div className="flex flex-wrap gap-4 pt-4 justify-center md:justify-start">
-                  {state.error.includes("Uplink") && (
-                    <button onClick={handleOpenKey} className="px-6 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all">Connect to Gemini</button>
-                  )}
-                  <button onClick={resetSearch} className="px-6 py-2 bg-rose-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-800 transition-all">Retry Base Scan</button>
+                  <button onClick={resetSearch} className="px-6 py-3 bg-rose-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-800 transition-all active:scale-95">Retry Base Scan</button>
                 </div>
               </div>
             </div>
@@ -196,7 +181,7 @@ const App: React.FC = () => {
                   setSources(searchRes.sources);
                   setState(prev => ({ ...prev, stage: 'RESULTS', results: searchRes.products }));
                 } catch (e: any) {
-                  setState(prev => ({ ...prev, stage: 'RESULTS', error: e.message }));
+                  setState(prev => ({ ...prev, stage: 'IDLE', error: e.message }));
                 }
             }} 
             regionFlag={region.flag} 
