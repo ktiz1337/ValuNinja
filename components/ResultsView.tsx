@@ -1,8 +1,7 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Product, SpecAttribute, PriceRange, RetailerLink, UserLocation, ValueBreakdown, AdUnit, SearchState } from '../types';
 import { AttributeForm } from './AttributeForm';
-import { Check, ShoppingCart, Award, Loader2, ScanLine, ExternalLink, SlidersHorizontal, Table as TableIcon, Globe, MapPin, Navigation, Zap, ShieldCheck, Store, Copy, Search, Link2, TrendingUp, Activity, Sparkles, Cpu, Hammer, Users, Timer, Lightbulb, MousePointer2, Landmark, Megaphone, Info, Crosshair, AlertCircle, ChevronLeft, RefreshCw, ScrollText, Binary, Compass, Terminal, Radio } from 'lucide-react';
+import { Check, ShoppingCart, Award, Loader2, ScanLine, ExternalLink, SlidersHorizontal, Table as TableIcon, Globe, MapPin, Navigation, Zap, ShieldCheck, Store, Search, Link2, TrendingUp, Activity, Sparkles, Cpu, Hammer, Users, Timer, Lightbulb, MousePointer2, Landmark, Megaphone, Crosshair, ScrollText, Binary, Terminal, Radio } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 
 interface ResultsViewProps {
@@ -183,7 +182,6 @@ const ScoutRadarOverlay: React.FC = () => (
     <div className="absolute w-full h-px bg-indigo-500/10 top-1/2"></div>
     <div className="absolute h-full w-px bg-indigo-500/10 left-1/2"></div>
     
-    {/* Target dots */}
     <div className="absolute top-10 right-12 animate-pulse">
       <div className="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_10px_#34d399]"></div>
     </div>
@@ -215,8 +213,6 @@ const MissionControlCenter: React.FC<{
       <div className="absolute top-0 right-0 w-[900px] h-[900px] bg-indigo-600 rounded-full blur-[200px] opacity-20 -mr-60 -mt-60 animate-pulse pointer-events-none"></div>
       
       <div className="relative z-10 flex flex-col gap-10">
-        
-        {/* ACTIVE SCOUT PROTOCOL - TOP POSITION */}
         <div className="flex flex-col md:flex-row items-center gap-4 bg-emerald-500/10 border border-emerald-500/20 rounded-[2rem] p-5 animate-in slide-in-from-top-4 duration-500">
            <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -236,7 +232,6 @@ const MissionControlCenter: React.FC<{
            </div>
         </div>
 
-        {/* Primary Status Header */}
         <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-8 text-center md:text-left pt-2">
           <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
             <div className="relative group">
@@ -283,7 +278,6 @@ const MissionControlCenter: React.FC<{
           )}
         </div>
 
-        {/* TACTICAL BRIEFING INLAY - ALWAYS VISIBLE IF SET */}
         {marketGuide && (
           <div className="bg-white/5 backdrop-blur-md rounded-[2.5rem] border border-white/10 p-8 md:p-12 relative overflow-hidden group">
              <div className="absolute top-0 right-0 p-8 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-1000">
@@ -321,7 +315,6 @@ const MissionControlCenter: React.FC<{
           </div>
         )}
 
-        {/* Terminal Log Inlay */}
         {isLoading && (
           <div className="bg-black/40 rounded-[2rem] p-6 border border-white/5 font-mono">
              <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
@@ -334,7 +327,7 @@ const MissionControlCenter: React.FC<{
                 <p className="text-slate-500 text-[10px] flex items-center gap-2"><span className="text-indigo-500 font-black">STRIKE:</span> Scrubbing local sources & online distribution nodes...</p>
                 <p className="text-slate-500 text-[10px] flex items-center gap-2"><span className="text-indigo-500 font-black">STRIKE:</span> Analyzing 10-point value breakdown for all targets...</p>
                 <p className="text-slate-500 text-[10px] flex items-center gap-2"><span className="text-indigo-500 font-black">STRIKE:</span> Verifying logistics & local sources...</p>
-                <p className="text-emerald-500/50 text-[10px] animate-pulse">>>> SCANNING_ACTIVE_PRICING_DELTAS...</p>
+                <p className="text-emerald-500/50 text-[10px] animate-pulse">{" >>> "} SCANNING_ACTIVE_PRICING_DELTAS...</p>
              </div>
           </div>
         )}
@@ -379,8 +372,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   return (
     <div className="w-full max-w-[1600px] mx-auto px-6 py-10 md:py-16 min-h-screen">
       <div className={`space-y-16 transition-all duration-700 ${isSearching ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-        
-        {/* TOP STATUS NAVIGATION */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 bg-slate-900 border border-slate-800 rounded-[2rem] p-6 flex items-center justify-between text-indigo-400 shadow-2xl overflow-hidden relative">
              <div className="absolute left-0 top-0 bottom-0 w-2 bg-indigo-500"></div>
@@ -399,7 +390,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
           </div>
         </div>
 
-        {/* MISSION CONTROL CENTER (ACTIVE SCOUT PROTOCOL & BRIEFING) */}
         {(isTransitioning || !hasResults) && (
            <MissionControlCenter 
               message={loadingMessage || "Deploying Scouts..."} 
@@ -411,10 +401,8 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
            />
         )}
 
-        {/* RESULTS GRID */}
         {!isTransitioning && hasResults && (
           <div className="space-y-16 animate-in fade-in duration-1000">
-            {/* ALPHA TARGET */}
             {topProduct && (
               <div className="relative overflow-hidden rounded-[3.5rem] shadow-2xl bg-slate-900 text-white border-2 border-indigo-500/30">
                 <div className="absolute top-8 right-8 z-20">
@@ -457,7 +445,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                       <span className="text-[12px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-4">Target Price Profile</span>
                       <div className="text-8xl font-black tracking-tighter mb-4">{getDisplayCurrency(topProduct.currency)}{topProduct.price?.toLocaleString()}</div>
                     </div>
-                    {/* PRIMARY ACTION: THE STRIKE LINK */}
                     {topProduct.retailers?.[0] && <RetailerButton link={topProduct.retailers[0]} primary />}
                   </div>
                 </div>
@@ -483,13 +470,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                              <ValueIndicator score={product.valueScore || 70} breakdown={product.valueBreakdown} verified={!!product.sourceUrl} />
                         </div>
                         <p className="text-base text-slate-500 line-clamp-3 mb-10 flex-1 leading-relaxed">{product.description}</p>
-                        {/* SECONDARY ACTION: THE MERCHANT LINK */}
                         {product.retailers?.[0] && <RetailerButton link={product.retailers[0]} primary={product.retailers[0].isDirect} />}
                     </div>
                 ))}
             </div>
 
-            {/* COMPLETE TACTICAL MATRIX TABLE */}
             <div className="bg-white rounded-[3rem] shadow-2xl border border-slate-200 overflow-hidden">
                <div className="p-10 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                   <div>
@@ -524,25 +509,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                           <td className="px-8 py-5 border-r border-slate-200 sticky left-0 bg-white z-20 text-[11px] font-black uppercase tracking-widest">Price Point</td>
                           {sortedProducts.map(p => <td key={p.id} className="px-8 py-5 text-xl font-black text-slate-900">{getDisplayCurrency(p.currency)}{p.price?.toLocaleString()}</td>)}
                        </tr>
-                       <tr className="hover:bg-slate-50 transition-colors">
-                          <td className="px-8 py-5 border-r border-slate-200 sticky left-0 bg-white z-20 text-[11px] font-black uppercase tracking-widest text-indigo-500">Scout Link</td>
-                          {sortedProducts.map(p => (
-                            <td key={p.id} className="px-8 py-5">
-                              {p.sourceUrl ? (
-                                <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-indigo-600 hover:text-indigo-800 underline font-black uppercase text-[10px]">
-                                  <ExternalLink className="w-3 h-3" /> View Merchant
-                                </a>
-                              ) : '-'}
-                            </td>
-                          ))}
-                       </tr>
                        {allSpecKeys.map(key => (
                          <tr key={key} className="hover:bg-slate-50 transition-colors">
                            <td className="px-8 py-4 border-r border-slate-200 sticky left-0 bg-white z-20 text-[11px] font-black uppercase tracking-widest text-slate-400">{key.replace(/([A-Z])/g, ' $1')}</td>
                            {sortedProducts.map(p => <td key={p.id} className="px-8 py-4">{p.specs ? (p.specs[key] || '-') : '-'}</td>)}
                          </tr>
                        ))}
-                       {/* 10-Point Score Grid in Matrix */}
                        {[
                          { k: 'performance', l: 'Performance' }, { k: 'buildQuality', l: 'Build Quality' }, 
                          { k: 'featureSet', l: 'Feature Set' }, { k: 'reliability', l: 'Reliability' }, 
@@ -569,7 +541,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
           </div>
         )}
 
-        {/* MISSION CONTROLS */}
         {!isTransitioning && (
           <div className="bg-white rounded-[3.5rem] shadow-2xl border-4 border-slate-900 p-12 md:p-20 relative overflow-hidden">
              <div className="absolute top-0 right-0 p-12 opacity-5">

@@ -91,10 +91,7 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
         .range-slider-thumb::-webkit-slider-thumb:hover { transform: scale(1.1); }
       `}</style>
 
-      {/* TACTICAL SCOUTING CONFIGURATION */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        
-        {/* SCOPE & LOCATION CONTROL */}
         <div className="space-y-6">
           <div className="flex items-center gap-2 mb-2">
             <Settings2 className="w-4 h-4 text-indigo-500" />
@@ -102,7 +99,6 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
           </div>
 
           <div className="space-y-4">
-             {/* Regional Target (ZIP/Postal) */}
              <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-indigo-500" />
@@ -127,7 +123,6 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
                 </div>
              </div>
 
-             {/* Search Scope Toggle */}
              <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                     <Globe className="w-3.5 h-3.5 text-indigo-500" />
@@ -144,7 +139,6 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
                 </button>
              </div>
 
-             {/* Radius Slider (Hidden if Global Only) */}
              {!location?.excludeRegionSpecific && (
                <div className="animate-in slide-in-from-top-2 duration-300 space-y-3 pt-2">
                   <div className="flex justify-between items-center">
@@ -169,7 +163,6 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
           </div>
         </div>
 
-        {/* ACQUISITION & BUDGET CONTROL */}
         <div className="space-y-6">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="w-4 h-4 text-amber-500" />
@@ -177,7 +170,6 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
           </div>
 
           <div className="space-y-6">
-             {/* Acquisition Mode (Only if Local is enabled) */}
              {!location?.excludeRegionSpecific && (
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
@@ -201,7 +193,6 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
                 </div>
              )}
 
-             {/* Price Threshold Control */}
              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-inner">
                 <div className="flex items-center justify-between mb-4">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
@@ -246,7 +237,6 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
         </div>
       </div>
 
-      {/* REQUIREMENTS & SEARCH */}
       <div className="space-y-4 pt-6 border-t border-slate-100">
           <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center mb-1">
@@ -278,7 +268,7 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
             <div className="flex flex-col">
                 <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest mb-1">Active Scout Protocol</span>
                 <p className="text-[11px] text-emerald-700 font-bold leading-relaxed">
-                    {location?.excludeRegionSpecific ? "Ninja will skip local stores and focus on the best prices from worldwide online retailers." : location?.localOnly ? `STRICT MODE: Scouting ONLY physical stores within ${location.radius || 50}km for immediate pickup.` : `Scouting physical stores within ${location.radius || 50}km + global online hubs.`}
+                    {location?.excludeRegionSpecific ? "Ninja will skip local sources and focus on the best prices from worldwide online retailers." : location?.localOnly ? `STRICT MODE: Scouting ONLY physical sources within ${location.radius || 50}km for immediate pickup.` : `Scouting physical sources within ${location.radius || 50}km + global online hubs.`}
                 </p>
             </div>
         </div>

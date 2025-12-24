@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, MapPin, Target, Globe, Settings2, ShieldCheck, Zap, Navigation, ShieldAlert } from 'lucide-react';
+import { Search, MapPin, Target, Globe, Settings2, ShieldCheck, Zap, Navigation } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 import { UserLocation } from '../types';
 
@@ -44,7 +44,7 @@ export const Hero: React.FC<HeroProps> = ({
         <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">Strike the Deal.</span>
       </h1>
       <p className="text-lg md:text-xl text-slate-600 max-w-2xl mb-8 leading-relaxed font-medium">
-        Stealthy intelligence to identify the absolute best value across <span className="font-bold text-slate-900">local stores</span> and <span className="font-bold text-slate-900">global markets.</span>
+        Stealthy intelligence to identify the absolute best value across <span className="font-bold text-slate-900">local sources</span> and <span className="font-bold text-slate-900">global markets.</span>
       </p>
 
       <div className="w-full max-w-2xl space-y-4">
@@ -81,7 +81,6 @@ export const Hero: React.FC<HeroProps> = ({
             <div className={`w-full overflow-hidden transition-all duration-300 ease-in-out ${showConfig ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="bg-white border-2 border-indigo-50 rounded-2xl p-6 shadow-xl shadow-indigo-100/20 text-left space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Regional Target */}
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                                 <MapPin className="w-3 h-3 text-indigo-500" />
@@ -106,7 +105,6 @@ export const Hero: React.FC<HeroProps> = ({
                             </div>
                         </div>
 
-                        {/* Search Scope */}
                         <div className="space-y-2">
                             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                                 <Globe className="w-3 h-3 text-indigo-500" />
@@ -124,10 +122,8 @@ export const Hero: React.FC<HeroProps> = ({
                         </div>
                     </div>
 
-                    {/* Local Options Grid */}
                     {!location?.excludeRegionSpecific && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-50 animate-in slide-in-from-top-2">
-                            {/* Radius Slider */}
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center">
                                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
@@ -151,7 +147,6 @@ export const Hero: React.FC<HeroProps> = ({
                                 </div>
                             </div>
 
-                            {/* Local Only Mode */}
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                                     <Zap className="w-3 h-3 text-amber-500" />
@@ -179,10 +174,10 @@ export const Hero: React.FC<HeroProps> = ({
                         <ShieldCheck className="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
                         <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
                             {location?.excludeRegionSpecific 
-                                ? "Ninja will skip local stores and focus on the best prices from worldwide online retailers." 
+                                ? "Ninja will skip local sources and focus on the best prices from worldwide online retailers." 
                                 : location?.localOnly 
-                                    ? `STRICT MODE: Scouting ONLY physical stores within ${location.radius || 50}km for immediate pickup.`
-                                    : `Scouting physical stores within ${location.radius || 50}km + global online hubs.`}
+                                    ? `STRICT MODE: Scouting ONLY physical sources within ${location.radius || 50}km for immediate pickup.`
+                                    : `Scouting physical sources within ${location.radius || 50}km + global online hubs.`}
                         </p>
                     </div>
                 </div>
