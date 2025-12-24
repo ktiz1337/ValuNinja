@@ -9,7 +9,20 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { analyzeProductCategory, searchProducts, getRegionInfo, resolveRegionFromLocation } from './services/geminiService';
 import { SearchState, AdUnit, Product, UserLocation } from './types';
 import { NinjaIcon } from './components/NinjaIcon';
-import { ShieldCheck, Award, Heart, ShieldAlert, ChevronLeft, X, Info, Terminal, Activity, Zap, Cpu, Globe, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Award, Heart, ShieldAlert, ChevronLeft, X, Info, Terminal, Activity, Zap, Cpu, Globe, AlertCircle, Key, Lock, ArrowRight, ExternalLink } from 'lucide-react';
+
+// Define the expected global AIStudio interface if not already present, 
+// and ensure window.aistudio matches the global definition's modifiers and type.
+declare global {
+  interface AIStudio {
+    hasSelectedApiKey: () => Promise<boolean>;
+    openSelectKey: () => Promise<void>;
+  }
+
+  interface Window {
+    readonly aistudio: AIStudio;
+  }
+}
 
 type View = 'HOME' | 'PRIVACY' | 'ABOUT' | 'TERMS' | 'RESULTS' | 'ADMIN';
 
@@ -33,6 +46,67 @@ interface AffiliateConfig {
   bestBuyId: string;
   impactId: string;
 }
+
+const KeySelectionGateway: React.FC<{ onKeySelected: () => void }> = ({ onKeySelected }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleOpenKey = async () => {
+    setLoading(true);
+    try {
+      if (window.aistudio?.openSelectKey) {
+        await window.aistudio.openSelectKey();
+        // The key selection is assumed successful per race condition rules
+        onKeySelected();
+      } else {
+        alert("Mission System Error: Secure Uplink Bridge not found. Please ensure your environment supports AI Studio extensions.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[300] bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0)_50%,#000_50%),linear-gradient(90deg,rgba(30,58,138,0.1),rgba(30,58,138,0.1),rgba(30,58,138,0.1))] bg-[length:100%_4px,4px_100%]"></div>
+      </div>
+      
+      <div className="relative z-10 max-w-md w-full bg-slate-800 border border-slate-700 p-10 rounded-[3rem] shadow-2xl">
+        <div className="w-20 h-20 bg-indigo-600 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-2xl animate-pulse">
+           <Lock className="w-10 h-10 text-white" />
+        </div>
+        
+        <h2 className="text-3xl font-black text-white tracking-tighter mb-4">Initialize Strike Protocol</h2>
+        <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">
+          To begin scouting, we must establish a secure uplink to the Gemini Intelligence Core. 
+          Please select an authorized API key from a paid GCP project.
+        </p>
+
+        <div className="space-y-4">
+          <button 
+            onClick={handleOpenKey}
+            disabled={loading}
+            className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-black py-5 px-8 rounded-2xl flex items-center justify-center gap-3 transition-all transform active:scale-95 shadow-xl shadow-indigo-500/20 disabled:opacity-50 uppercase tracking-widest text-xs"
+          >
+            {loading ? <Activity className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+            Establish Secure Uplink
+          </button>
+          
+          <a 
+            href="https://ai.google.dev/gemini-api/docs/billing" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 text-[10px] font-black text-slate-500 hover:text-indigo-400 transition-colors uppercase tracking-widest"
+          >
+            Mission Billing Docs <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const BootSequence: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [step, setStep] = useState(0);
@@ -176,6 +250,7 @@ const CookieConsent: React.FC = () => {
 
 const App: React.FC = () => {
   const [isBooting, setIsBooting] = useState(true);
+  const [needsApiKey, setNeedsApiKey] = useState(false);
   const [view, setView] = useState<View>('HOME');
   const [state, setState] = useState<SearchState>({
     query: '',
@@ -220,6 +295,27 @@ const App: React.FC = () => {
       type
     };
     setLogs(prev => [newLog, ...prev].slice(0, 50));
+  }, []);
+
+  // Check for API key selection state on mount
+  useEffect(() => {
+    const checkApiKey = async () => {
+      // If API_KEY is already in process.env and is a valid-looking string, we likely don't need a selection
+      if (process.env.API_KEY && process.env.API_KEY !== 'undefined' && process.env.API_KEY.length > 5) {
+        setNeedsApiKey(false);
+        return;
+      }
+      
+      // If window.aistudio is available, check if a key was selected
+      if (window.aistudio?.hasSelectedApiKey) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setNeedsApiKey(!hasKey);
+      } else {
+        // If not in a Studio environment and key is missing, show selection gate
+        setNeedsApiKey(!process.env.API_KEY || process.env.API_KEY === 'undefined');
+      }
+    };
+    checkApiKey();
   }, []);
 
   useEffect(() => {
@@ -322,7 +418,8 @@ const App: React.FC = () => {
       setSources(groundingSources);
       setState(prev => ({ ...prev, stage: 'RESULTS', results: products }));
 
-      const topPrice = products[0]?.price || 0;
+      const topProduct = products[0];
+      const topPrice = topProduct?.price || 0;
       addLog(`Mission: Success. Found ${products.length} targets. Alpha Target price: ${topPrice}`, 'success');
       
       setStats(prev => {
@@ -351,6 +448,10 @@ const App: React.FC = () => {
 
     } catch (error: any) {
       const errorMsg = error.message || "Unknown mission failure.";
+      // Check if it's an API key error to prompt re-selection
+      if (errorMsg.includes("Requested entity was not found") || errorMsg.includes("API_KEY_MISSING")) {
+        setNeedsApiKey(true);
+      }
       addLog(`Mission Failure: ${errorMsg}`, 'error');
       setState(prev => ({ ...prev, stage: 'IDLE', error: `Mission aborted: ${errorMsg}` }));
     }
@@ -388,6 +489,7 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-indigo-200 flex flex-col relative">
       {isBooting && <BootSequence onComplete={() => setIsBooting(false)} />}
+      {needsApiKey && <KeySelectionGateway onKeySelected={() => setNeedsApiKey(false)} />}
       
       <nav className="border-b border-white/50 bg-white/80 sticky top-0 z-50 backdrop-blur-md shadow-sm">
         <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between">
