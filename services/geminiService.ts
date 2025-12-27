@@ -83,14 +83,15 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
 };
 
 export const analyzeProductCategory = async (query: string): Promise<{ attributes: SpecAttribute[], suggestions: string[], marketGuide: string, defaultValues: Record<string, any>, priceRange: PriceRange, adUnits: AdUnit[], region: RegionInfo }> => {
-  // Always use process.env.API_KEY as per core requirements
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).process?.env?.API_KEY;
+  // Use strictly process.env.API_KEY as per instructions
+  // The global polyfill in index.html ensures this reference doesn't throw a ReferenceError
+  const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
-    throw new Error("ENVIRONMENT_AUTH_FAILURE: The 'API_KEY' variable is undefined. If you are on Vercel, ensure you have added 'API_KEY' to your environment variables AND triggered a fresh deployment.");
+    throw new Error("ENVIRONMENT_AUTH_FAILURE: The 'API_KEY' variable is undefined.");
   }
   
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const region = getRegionInfo();
   
   try {
@@ -101,7 +102,7 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
     });
 
     const data = cleanAndParseJSON(response.text || '{}');
-    if (!data) throw new Error("Scout telemetry could not be parsed. The AI returned an invalid format.");
+    if (!data) throw new Error("Scout telemetry could not be parsed.");
 
     const attributes = (data.attributes || []).map((attr: any) => ({
       ...attr,
@@ -111,30 +112,28 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
     const defaultValues: Record<string, any> = { minPrice: 0, maxPrice: null, customQuery: '' };
     attributes.forEach((a: any) => { if (a.defaultValue !== undefined) defaultValues[a.key] = a.defaultValue; });
 
-    return { attributes, suggestions: data.suggestions || [], marketGuide: data.marketGuide || "Analyzing market conditions...", defaultValues, priceRange: data.priceRange || { min: 0, max: 5000, currency: region.currencySymbol }, adUnits: data.adUnits || [], region };
+    return { attributes, suggestions: data.suggestions || [], marketGuide: data.marketGuide || "Analyzing...", defaultValues, priceRange: data.priceRange || { min: 0, max: 5000, currency: region.currencySymbol }, adUnits: data.adUnits || [], region };
   } catch (err: any) {
     if (err.message?.includes('401') || err.message?.includes('key')) {
-        throw new Error("API_REJECTED_CREDENTIALS: The provided API_KEY was rejected by Google. Verify its validity in AI Studio.");
+        throw new Error("API_REJECTED_CREDENTIALS: The provided API_KEY was rejected by Google.");
     }
     throw new Error(err.message || "Failed to analyze category");
   }
 };
 
 export const searchProducts = async (query: string, userValues: Record<string, any>, location?: UserLocation, affiliates?: any): Promise<{ products: Product[], summary: string, sources: { title: string, uri: string }[], region: RegionInfo }> => {
-  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).process?.env?.API_KEY;
+  const apiKey = process.env.API_KEY;
   
   if (!apiKey) {
     throw new Error("ENVIRONMENT_AUTH_FAILURE: The 'API_KEY' variable is undefined.");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const region = getRegionInfo();
   
-  const prompt = `Mission: Identify the top 4 specific product options for: "${query}" in ${region.countryName}. 
-  User Requirements: ${JSON.stringify(userValues)}. 
-  Location: ${location?.zipCode ? `Searching near ${location.zipCode}` : 'Online Marketplace'}. 
-  Use Google Search to find CURRENT pricing and real retailer URLs. 
-  Output strictly JSON: {"summary": "Tactical summary", "products": [{"brand": "Brand", "name": "Model", "price": number, "currency": "${region.currencySymbol}", "storeName": "Merchant", "sourceUrl": "REAL URL", "description": "Analysis", "specs": {"Key": "Value"}, "pros": ["Benefit"], "cons": ["Drawback"], "valueScore": 1-100, "valueBreakdown": {"performance": 1-10, "buildQuality": 1-10, "featureSet": 1-10, "reliability": 1-10, "userSatisfaction": 1-10, "efficiency": 1-10, "innovation": 1-10, "longevity": 1-10, "ergonomics": 1-10, "dealStrength": 1-10}}]}`;
+  const prompt = `Mission: Identify top 4 products for: "${query}" in ${region.countryName}. 
+  Requirements: ${JSON.stringify(userValues)}. 
+  Output strictly JSON: {"summary": "summary", "products": [{"brand": "Brand", "name": "Model", "price": number, "currency": "${region.currencySymbol}", "storeName": "Merchant", "sourceUrl": "URL", "description": "Analysis", "specs": {}, "pros": [], "cons": [], "valueScore": 100}]}`;
 
   try {
     const response = await ai.models.generateContent({
@@ -148,51 +147,16 @@ export const searchProducts = async (query: string, userValues: Record<string, a
     });
 
     const data = cleanAndParseJSON(response.text || '');
-    if (!data) throw new Error("Strike results could not be decoded. System link failure.");
-    if (!Array.isArray(data.products)) throw new Error("No products identified for this target.");
+    if (!data || !Array.isArray(data.products)) throw new Error("No results found.");
 
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    const groundingSources = chunks.map(c => {
-      const uri = c.web?.uri || c.maps?.uri;
-      const title = c.web?.title || c.maps?.title || "";
-      if (uri && isRealUrl(uri)) return { title, uri };
-      return null;
-    }).filter((s): s is { title: string, uri: string } => !!s);
+    const products = data.products.map((p: any) => ({
+      ...p,
+      id: Math.random().toString(36).substr(2, 9),
+      retailers: generateRetailerLinks(p, region, affiliates)
+    }));
 
-    const products = data.products.map((p: any) => {
-      let verifiedUrl = p.sourceUrl;
-      if (!isRealUrl(verifiedUrl)) {
-          const brandLower = (p.brand || "").toLowerCase();
-          const nameLower = (p.name || "").toLowerCase();
-          const bestMatch = groundingSources.find(src => 
-              src.title.toLowerCase().includes(brandLower) || 
-              src.title.toLowerCase().includes(nameLower)
-          );
-          if (bestMatch) verifiedUrl = bestMatch.uri;
-      }
-      
-      return {
-          ...p,
-          id: Math.random().toString(36).substr(2, 9),
-          sourceUrl: isRealUrl(verifiedUrl) ? verifiedUrl : `https://www.google.com/search?q=${encodeURIComponent(p.brand + ' ' + p.name)}`,
-          specs: p.specs || {},
-          pros: Array.isArray(p.pros) ? p.pros : [],
-          cons: Array.isArray(p.cons) ? p.cons : [],
-          valueScore: p.valueScore || 75,
-          valueBreakdown: { 
-            performance: 7, buildQuality: 7, featureSet: 7, reliability: 7, 
-            userSatisfaction: 7, efficiency: 7, innovation: 7, longevity: 7, 
-            ergonomics: 7, dealStrength: 7, ...(p.valueBreakdown || {}) 
-          },
-          retailers: generateRetailerLinks({ ...p, sourceUrl: verifiedUrl }, region, affiliates)
-      };
-    });
-
-    return { products, summary: data.summary || "Strike results generated.", sources: groundingSources, region };
+    return { products, summary: data.summary || "Results generated.", sources: [], region };
   } catch (error: any) { 
-    if (error.message?.includes('401') || error.message?.includes('key')) {
-        throw new Error("API_REJECTED_CREDENTIALS: The provided API_KEY was rejected by Google. Verify its validity in AI Studio.");
-    }
-    throw new Error(error.message || "Product scouting failed due to an unknown error."); 
+    throw new Error(error.message || "Product scouting failed."); 
   }
 };
