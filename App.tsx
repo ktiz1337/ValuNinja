@@ -9,7 +9,7 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { analyzeProductCategory, searchProducts } from './services/geminiService';
 import { SearchState, AdUnit, Product, UserLocation } from './types';
 import { NinjaIcon } from './components/NinjaIcon';
-import { ShieldCheck, Award, AlertCircle, Terminal, Activity, Zap, Cpu, Key, ExternalLink, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Award, AlertCircle, Terminal, Activity, Zap, Cpu, Key, ExternalLink, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, Box } from 'lucide-react';
 
 type View = 'HOME' | 'PRIVACY' | 'ABOUT' | 'TERMS' | 'RESULTS' | 'ADMIN';
 
@@ -156,6 +156,23 @@ const App: React.FC = () => {
 
   const resetSearch = () => { setView('HOME'); setState(prev => ({ ...prev, stage: 'IDLE', query: '', results: [], error: undefined })); };
 
+  // Diagnostic Info for the UI
+  const getEnvStatus = () => {
+    try {
+        const key = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).process?.env?.API_KEY;
+        return {
+            hasProcess: typeof process !== 'undefined',
+            hasKey: !!key,
+            keyPrefix: key ? key.substring(0, 4) + '...' : 'NONE',
+            envKeys: typeof process !== 'undefined' ? Object.keys(process.env).join(', ') : 'PROCESS_UNDEFINED'
+        };
+    } catch (e) {
+        return { hasProcess: false, hasKey: false, keyPrefix: 'ERROR', envKeys: 'ERROR' };
+    }
+  };
+
+  const env = getEnvStatus();
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col relative">
       {isBooting && <BootSequence onComplete={() => setIsBooting(false)} />}
@@ -176,7 +193,7 @@ const App: React.FC = () => {
 
       <main className="flex-grow">
         {state.error && (
-          <div className="max-w-4xl mx-auto mt-10 px-6">
+          <div className="max-w-4xl mx-auto mt-10 px-6 pb-20">
             <div className="bg-rose-50 border border-rose-200 rounded-[2.5rem] p-10 flex flex-col md:flex-row items-center gap-8 shadow-xl mb-6">
               <div className="w-16 h-16 bg-rose-600 rounded-2xl flex items-center justify-center flex-shrink-0"><AlertCircle className="w-8 h-8 text-white" /></div>
               <div className="flex-1 text-center md:text-left space-y-2">
@@ -188,53 +205,76 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {state.error.includes("API_KEY") && (
-              <div className="bg-slate-900 rounded-[2.5rem] p-10 border border-slate-800 text-white space-y-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-5">
-                  <Key className="w-32 h-32 text-indigo-500" />
-                </div>
-                
-                <div className="relative z-10">
-                  <h4 className="flex items-center gap-3 text-indigo-400 font-black uppercase tracking-widest text-sm mb-8">
-                    <Terminal className="w-5 h-5" /> Environment Variable Checklist
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                    <div className="space-y-4">
-                       <div className="flex items-center gap-2 text-indigo-400 font-black text-[10px] uppercase tracking-widest">
-                          <CheckCircle2 className="w-4 h-4" /> Vercel Configuration
-                       </div>
-                       <ul className="space-y-4">
-                         <li className="flex gap-4">
-                            <span className="flex-shrink-0 w-6 h-6 bg-indigo-500/20 border border-indigo-500/30 rounded-full flex items-center justify-center text-[10px] font-black text-indigo-400">1</span>
-                            <div>
-                               <p className="text-sm font-bold text-slate-200">Set Variable Key</p>
-                               <p className="text-xs text-slate-400">The name must be exactly <code className="bg-white/10 px-1.5 py-0.5 rounded text-indigo-300 font-black">API_KEY</code></p>
+            {state.error.includes("AUTH_FAILURE") && (
+              <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                <div className="bg-slate-900 rounded-[2.5rem] p-10 border border-slate-800 text-white space-y-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <Key className="w-32 h-32 text-indigo-500" />
+                    </div>
+                    
+                    <div className="relative z-10">
+                    <h4 className="flex items-center gap-3 text-indigo-400 font-black uppercase tracking-widest text-sm mb-8">
+                        <Terminal className="w-5 h-5" /> Vercel Environment Debugger
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-indigo-400 font-black text-[10px] uppercase tracking-widest">
+                            <Box className="w-4 h-4" /> Live Runtime Diagnostic
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 font-mono text-[11px] space-y-3">
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">process_exists:</span>
+                                <span className={env.hasProcess ? 'text-emerald-400' : 'text-rose-400'}>{String(env.hasProcess)}</span>
                             </div>
-                         </li>
-                         <li className="flex gap-4">
-                            <span className="flex-shrink-0 w-6 h-6 bg-indigo-500/20 border border-indigo-500/30 rounded-full flex items-center justify-center text-[10px] font-black text-indigo-400">2</span>
-                            <div>
-                               <p className="text-sm font-bold text-slate-200">Paste Gemini Key</p>
-                               <p className="text-xs text-slate-400">The value should start with <code className="bg-white/10 px-1.5 py-0.5 rounded text-indigo-300 font-black">AIza...</code></p>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">api_key_found:</span>
+                                <span className={env.hasKey ? 'text-emerald-400' : 'text-rose-400'}>{String(env.hasKey)}</span>
                             </div>
-                         </li>
-                       </ul>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">key_prefix:</span>
+                                <span className="text-indigo-400">{env.keyPrefix}</span>
+                            </div>
+                            <div className="pt-2 border-t border-white/5">
+                                <span className="text-slate-500 block mb-1">available_vars:</span>
+                                <span className="text-slate-400 truncate block">{env.envKeys}</span>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-400 leading-relaxed italic">
+                            If <span className="text-rose-400 font-bold">api_key_found</span> is false above, the code literally cannot see your variable.
+                        </p>
+                        </div>
+
+                        <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-amber-400 font-black text-[10px] uppercase tracking-widest">
+                            <AlertTriangle className="w-4 h-4" /> Final Fix Instructions
+                        </div>
+                        <div className="bg-amber-900/10 border border-amber-500/20 rounded-2xl p-6 space-y-4">
+                            <div>
+                                <p className="text-[10px] text-amber-500 font-black uppercase mb-1">Check Vercel Dashboard</p>
+                                <p className="text-xs text-slate-300">Go to <strong>Settings &gt; Environment Variables</strong>. Ensure the variable name is <code className="text-indigo-400">API_KEY</code> and not something else like <code className="text-slate-500">VITE_API_KEY</code>.</p>
+                            </div>
+                            <div className="pt-4 border-t border-white/5">
+                                <p className="text-[10px] text-amber-500 font-black uppercase mb-1">Environment Checkboxes</p>
+                                <p className="text-xs text-slate-300">Ensure <strong>Production</strong>, <strong>Preview</strong>, and <strong>Development</strong> are ALL checked.</p>
+                            </div>
+                            <div className="pt-4 border-t border-white/5">
+                                <p className="text-[10px] text-rose-400 font-black uppercase mb-1">Vital Step</p>
+                                <p className="text-xs text-slate-300 font-bold">You MUST create a NEW deployment. Static sites do not update environment variables until they are rebuilt.</p>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
                     </div>
 
-                    <div className="space-y-4">
-                       <div className="flex items-center gap-2 text-amber-400 font-black text-[10px] uppercase tracking-widest">
-                          <ShieldAlert className="w-4 h-4" /> Troubleshooting
-                       </div>
-                       <p className="text-xs text-slate-400 leading-relaxed">
-                         If you just added the variable in Vercel, you <strong>must redeploy</strong> your project for the changes to take effect.
-                       </p>
-                       <div className="bg-white/5 p-4 rounded-xl border border-white/10">
-                          <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Common Pitfall</p>
-                          <p className="text-xs text-slate-300">The "Name" you give the key in Google AI Studio dashboard doesn't matter. Only the <span className="text-indigo-400 font-black">API_KEY</span> name in Vercel matters.</p>
-                       </div>
+                    <div className="mt-8 pt-8 border-t border-white/5 text-center">
+                        <button 
+                        onClick={() => window.location.reload()}
+                        className="inline-flex items-center gap-2 text-[10px] font-black uppercase text-indigo-400 hover:text-white transition-colors tracking-widest bg-white/5 px-6 py-3 rounded-xl border border-white/10"
+                        >
+                        <RefreshCw className="w-3 h-3" /> Refresh Diagnostics
+                        </button>
                     </div>
-                  </div>
                 </div>
               </div>
             )}

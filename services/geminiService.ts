@@ -83,11 +83,14 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
 };
 
 export const analyzeProductCategory = async (query: string): Promise<{ attributes: SpecAttribute[], suggestions: string[], marketGuide: string, defaultValues: Record<string, any>, priceRange: PriceRange, adUnits: AdUnit[], region: RegionInfo }> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable is missing. Please configure it in your Vercel project settings.");
+  // Always use process.env.API_KEY as per core requirements
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).process?.env?.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("ENVIRONMENT_AUTH_FAILURE: The 'API_KEY' variable is undefined. If you are on Vercel, ensure you have added 'API_KEY' to your environment variables AND triggered a fresh deployment.");
   }
   
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const region = getRegionInfo();
   
   try {
@@ -110,16 +113,21 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
 
     return { attributes, suggestions: data.suggestions || [], marketGuide: data.marketGuide || "Analyzing market conditions...", defaultValues, priceRange: data.priceRange || { min: 0, max: 5000, currency: region.currencySymbol }, adUnits: data.adUnits || [], region };
   } catch (err: any) {
+    if (err.message?.includes('401') || err.message?.includes('key')) {
+        throw new Error("API_REJECTED_CREDENTIALS: The provided API_KEY was rejected by Google. Verify its validity in AI Studio.");
+    }
     throw new Error(err.message || "Failed to analyze category");
   }
 };
 
 export const searchProducts = async (query: string, userValues: Record<string, any>, location?: UserLocation, affiliates?: any): Promise<{ products: Product[], summary: string, sources: { title: string, uri: string }[], region: RegionInfo }> => {
-  if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable is missing. Please configure it in your Vercel project settings.");
+  const apiKey = typeof process !== 'undefined' ? process.env.API_KEY : (window as any).process?.env?.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error("ENVIRONMENT_AUTH_FAILURE: The 'API_KEY' variable is undefined.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const region = getRegionInfo();
   
   const prompt = `Mission: Identify the top 4 specific product options for: "${query}" in ${region.countryName}. 
@@ -182,6 +190,9 @@ export const searchProducts = async (query: string, userValues: Record<string, a
 
     return { products, summary: data.summary || "Strike results generated.", sources: groundingSources, region };
   } catch (error: any) { 
+    if (error.message?.includes('401') || error.message?.includes('key')) {
+        throw new Error("API_REJECTED_CREDENTIALS: The provided API_KEY was rejected by Google. Verify its validity in AI Studio.");
+    }
     throw new Error(error.message || "Product scouting failed due to an unknown error."); 
   }
 };
