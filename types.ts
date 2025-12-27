@@ -1,133 +1,99 @@
-export enum TransactionType {
-  IN = 'IN',
-  OUT = 'OUT',
+export interface RetailerLink {
+  name: string;
+  url: string;
+  icon?: 'amazon' | 'google' | 'bestbuy' | 'generic' | 'maps';
+  isDirect?: boolean;
 }
 
-export type ReplenishmentModel = 'MIN_MAX' | 'PERIODIC_REVIEW' | 'FIXED_DAYS';
-export type SafetyStockStrategy = 'STATISTICAL' | 'WEEKS_OF_COVER';
-export type LeadTimeMode = 'AVERAGE' | 'MAX';
-
-export interface Transaction {
-  id: string;
-  productId: string;
-  branch?: string; 
-  date: string; // ISO date string YYYY-MM-DD
-  quantity: number;
-  type: TransactionType;
+export interface UserLocation {
+  latitude?: number;
+  longitude?: number;
+  zipCode?: string;
+  address?: string;
+  excludeRegionSpecific?: boolean; 
+  radius?: number; // Search radius in km
+  localOnly?: boolean; // Toggle for "Local Pickup Only"
 }
 
-export interface PurchaseOrder {
-  id: string;
-  poNumber: string;
-  productId: string;
-  branch?: string;
-  orderDate: string; // YYYY-MM-DD
-  receiveDate: string; // YYYY-MM-DD
-  quantity: number;
+export interface ValueBreakdown {
+  performance: number;      // 1-10
+  buildQuality: number;     // 1-10
+  featureSet: number;       // 1-10
+  reliability: number;      // 1-10
+  userSatisfaction: number; // 1-10
+  efficiency: number;       // 1-10
+  innovation: number;       // 1-10
+  longevity: number;        // 1-10
+  ergonomics: number;       // 1-10
+  dealStrength: number;     // 1-10
 }
 
 export interface Product {
   id: string;
   name: string;
-  sku: string;
-  category: string;
-  branch: string;
-  cost: number;
-  
-  leadTimeDays: number; 
-  
-  physicalStock?: number;  // From 'stockactual'
-  availableStock?: number; // From 'stockavailable'
-  stockOnOrder?: number;   // From 'stockonorder'
-  currentStock: number;    // The 'effective' stock used for analysis
-
-  currentMin?: number; 
-  currentMax?: number; 
-
-  serviceLevelOverride?: number; 
-  manualAvgDailyUsage?: number; 
+  brand: string;
+  price: number;
+  currency: string;
+  rating: number;
+  description: string;
+  features: string[];
+  specs: Record<string, string | number>;
+  pros: string[];
+  cons: string[];
+  imageUrl?: string;
+  sourceUrl?: string;
+  retailers: RetailerLink[];
+  asin?: string;
+  modelNumber?: string;
+  isSponsored?: boolean;
+  isLocal?: boolean;
+  distance?: string;
+  storeName?: string; 
+  valueScore?: number; // 1-100 total (Sum of breakdown)
+  valueBreakdown?: ValueBreakdown;
+  directUrl?: string; // Direct retailer/product page URL if verified
 }
 
-export interface ServiceLevelConfig {
-  global: number;
-  categories: Record<string, number>;
-  stockBasis: 'physical' | 'available';
-  outlierThreshold: number; // 0 for disabled, or 2, 3, 4 for sigma levels
-  orderCycleDays: number;   // Days of cycle stock (Max - Min)
-  replenishmentModel: ReplenishmentModel;
-  
-  // Advanced Robustness Settings
-  safetyStockStrategy: SafetyStockStrategy;
-  weeksOfSafetyStock: number; 
-  leadTimeMode: LeadTimeMode;
-  growthFactor: number; // 1.0 = no change, 1.1 = +10% demand forecast
-
-  // Rebalancing Logic
-  rebalancingStrategy: number; // 0 = Favor Transfer (Efficiency), 1 = Favor Ordering (Position)
-  
-  // Financial Assumptions
-  orderPlacementCost: number; // Cost per PO (admin/shipping)
-  holdingCostAnnualPct: number; // e.g., 0.20 for 20% annual holding cost
+export enum AttributeType {
+  SELECT = 'SELECT',
+  NUMBER = 'NUMBER',
+  BOOLEAN = 'BOOLEAN',
+  STRING = 'STRING'
 }
 
-export interface MonthlyUsage {
-  month: string; 
-  quantity: number;
+export interface SpecAttribute {
+  key: string;
+  label: string;
+  type: AttributeType;
+  options?: string[];
+  unit?: string;
+  defaultValue?: string | number | boolean;
+  description?: string;
 }
 
-export interface AnalysisResult {
-  productId: string;
-  productName: string;
-  sku: string;
-  category: string;
-  branch: string;
-  unitCost: number;
-  
-  calculatedStock: number; 
-  onOrderQty: number; // Incoming stock
-  stockBasisUsed: 'physical' | 'available';
+export interface PriceRange {
+  min: number;
+  max: number;
+  currency: string;
+}
 
-  avgDailyUsage: number;
-  stdDevUsage: number;
-  monthlyTrend: MonthlyUsage[];
-  isManualUsage: boolean;
-  anomaliesDetectedCount: number;
-  
-  leadTimeUsed: number;
-  isLeadTimeCalculated: boolean; 
-  leadTimeModeUsed: LeadTimeMode;
-  
-  safetyStock: number;
-  safetyStockStrategyUsed: SafetyStockStrategy;
-  minStock: number; 
-  maxStock: number; 
-  orderCycleUsed: number;
-  replenishmentModelUsed: ReplenishmentModel;
+export interface AdUnit {
+  headline: string;
+  description: string;
+  cta: string;
+  brand: string;
+}
 
-  // ABC Analysis
-  abcClass: 'A' | 'B' | 'C';
-  revenueContribution: number;
-  eoq: number; // Economic Order Quantity
-
-  // Suggestions
-  suggestedOrderQty: number;
-  suggestedTransferQty: number;
-  transferSourceBranch?: string;
-  
-  currentMinSetting: number;
-  currentMaxSetting: number;
-
-  currentValuation: number; 
-  
-  currentMinValuation: number; 
-  currentMaxValuation: number; 
-  
-  optimalMinValuation: number; 
-  optimalMaxValuation: number; 
-  optimalValuation: number; 
-  grossOverstockValuation: number; 
-  shortfallValuation: number; // Capital needed to reach optimal average
-  
-  stockStatus: 'LOW' | 'OK' | 'HIGH' | 'STOCKOUT' | 'INACTIVE' | 'DEAD';
-  serviceLevelUsed: number;
+export interface SearchState {
+  query: string;
+  stage: 'IDLE' | 'ANALYZING' | 'LOADING_PRODUCTS' | 'SEARCHING' | 'RESULTS';
+  attributes: SpecAttribute[];
+  suggestions?: string[];
+  userValues: Record<string, any>;
+  priceRange?: PriceRange;
+  results: Product[];
+  marketGuide?: string;
+  adContent?: AdUnit[];
+  location?: UserLocation;
+  error?: string;
 }

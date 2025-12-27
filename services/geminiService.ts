@@ -83,6 +83,10 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
 };
 
 export const analyzeProductCategory = async (query: string): Promise<{ attributes: SpecAttribute[], suggestions: string[], marketGuide: string, defaultValues: Record<string, any>, priceRange: PriceRange, adUnits: AdUnit[], region: RegionInfo }> => {
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY environment variable is missing. Please configure it in your Vercel project settings.");
+  }
+  
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const region = getRegionInfo();
   
@@ -94,7 +98,7 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
     });
 
     const data = cleanAndParseJSON(response.text || '{}');
-    if (!data) throw new Error("Could not parse category data");
+    if (!data) throw new Error("Scout telemetry could not be parsed. The AI returned an invalid format.");
 
     const attributes = (data.attributes || []).map((attr: any) => ({
       ...attr,
@@ -111,6 +115,10 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
 };
 
 export const searchProducts = async (query: string, userValues: Record<string, any>, location?: UserLocation, affiliates?: any): Promise<{ products: Product[], summary: string, sources: { title: string, uri: string }[], region: RegionInfo }> => {
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY environment variable is missing. Please configure it in your Vercel project settings.");
+  }
+
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const region = getRegionInfo();
   
@@ -132,8 +140,8 @@ export const searchProducts = async (query: string, userValues: Record<string, a
     });
 
     const data = cleanAndParseJSON(response.text || '');
-    if (!data) throw new Error("Search results could not be decoded.");
-    if (!Array.isArray(data.products)) throw new Error("No products identified.");
+    if (!data) throw new Error("Strike results could not be decoded. System link failure.");
+    if (!Array.isArray(data.products)) throw new Error("No products identified for this target.");
 
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const groundingSources = chunks.map(c => {
@@ -174,6 +182,6 @@ export const searchProducts = async (query: string, userValues: Record<string, a
 
     return { products, summary: data.summary || "Strike results generated.", sources: groundingSources, region };
   } catch (error: any) { 
-    throw new Error(error.message || "Product scouting failed."); 
+    throw new Error(error.message || "Product scouting failed due to an unknown error."); 
   }
 };
