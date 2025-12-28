@@ -10,7 +10,7 @@ const getAdminConfig = (): AdminConfig => {
   if (saved) return JSON.parse(saved);
   return {
     thinkingBudget: 16000,
-    systemDirective: "Always prioritize absolute value and technical reliability.",
+    systemDirective: "Always prioritize absolute value and technical reliability. STATED PRICES MUST BE REAL AND GROUNDED.",
     modelSelection: 'gemini-3-pro-preview'
   };
 };
@@ -120,7 +120,7 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
 
   const ai = new GoogleGenAI({ apiKey });
   const config = getAdminConfig();
-  const prompt = `[CONTEXT: ${CURRENT_DATE_CONTEXT}] [DIRECTIVE: ${config.systemDirective}] Identify this product exactly. Return ONLY the Brand and Model name. If you cannot identify it, return 'Unknown Product'.`;
+  const prompt = `[CONTEXT: ${CURRENT_DATE_CONTEXT}] [DIRECTIVE: ${config.systemDirective}] Identify this product exactly. Return ONLY the Brand and Model name. If you cannot identify it, return 'Unknown Product'. STRICTLY NO HALLUCINATIONS.`;
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -144,7 +144,8 @@ export const refreshProductPrice = async (product: Product): Promise<{ price: nu
   
   const prompt = `Deep Recon Mission [CONTEXT: ${CURRENT_DATE_CONTEXT}]: Find the CURRENT best price for the product: "${product.brand} ${product.name}" in ${region.countryName}. 
   Use Search Grounding for REAL pricing from Google Shopping, Amazon, or local stores for late 2025/2026.
-  Output JSON strictly: {"price": number, "currency": "string", "store": "string"}`;
+  Output JSON strictly: {"price": number, "currency": "string", "store": "string"}
+  STRICTLY NO HALLUCINATIONS. If price is unknown, return the previous price.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -176,9 +177,9 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Mission: Analyze "${query}" for ${region.countryName}. 
-      [CONTEXT: ${CURRENT_DATE_CONTEXT} Ensure analysis is strictly based on current 2025/2026 data. DO NOT halluncinate older model information.]
+      [CONTEXT: ${CURRENT_DATE_CONTEXT} Ensure analysis is strictly based on current 2025/2026 data. DO NOT hallucinate discontinued or older model information.]
       [DIRECTIVE: ${config.systemDirective}]
-      If this is a GIFT or TRIP request, suggest attributes like 'Age Group', 'Interests', 'Seasonality', 'Recipient Type', etc.
+      If this is a GIFT or TRIP request, suggest attributes like 'Age Group', 'Interests', 'Seasonality', 'Recipient Type', 'Budget Tiers', etc.
       Return JSON strictly: {
         "attributes": [{"key": "string", "label": "string", "type": "NUMBER|STRING|BOOLEAN", "defaultValue": "any"}],
         "marketGuide": {
@@ -230,10 +231,10 @@ export const searchProducts = async (
   const region = getRegionInfo();
   const adminConfig = getAdminConfig();
   
-  const prompt = `Mission: Find EXACTLY ${limit} best value products or options for: "${query}" in ${region.countryName}. 
+  const prompt = `Mission: Find EXACTLY ${limit} best value options or products for: "${query}" in ${region.countryName}. 
   [CONTEXT: ${CURRENT_DATE_CONTEXT} Use search grounding to ensure models, availability, and pricing are strictly current for 2025/2026. DO NOT hallucinate older data.]
   [DIRECTIVE: ${adminConfig.systemDirective}]
-  If this is a GIFT search, prioritize highly-rated, trending items from late 2025.
+  If this is a GIFT or TRIP search, prioritize highly-rated, available items or current destination deals.
   Requirements: ${JSON.stringify(userValues)}. 
   Use Search Grounding for REAL pricing. 
   Output strictly JSON: {
@@ -244,8 +245,8 @@ export const searchProducts = async (
     },
     "products": [
       {
-        "brand": "Brand", "name": "Model", "price": number, "currency": "${region.currencySymbol}", 
-        "storeName": "Merchant", "sourceUrl": "URL", "description": "Analysis", "specs": {"Key": "Value"}, 
+        "brand": "Brand/Vendor", "name": "Model/Option Name", "price": number, "currency": "${region.currencySymbol}", 
+        "storeName": "Merchant/Platform", "sourceUrl": "URL", "description": "Specific value analysis", "specs": {"Key": "Value"}, 
         "pros": [], "cons": [], "valueScore": 1-100, 
         "valueBreakdown": {"performance": 1-10, "buildQuality": 1-10, "featureSet": 1-10, "reliability": 1-10, "userSatisfaction": 1-10, "efficiency": 1-10, "innovation": 1-10, "longevity": 1-10, "ergonomics": 1-10, "dealStrength": 1-10}
       }

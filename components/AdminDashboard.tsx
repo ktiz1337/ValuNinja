@@ -4,7 +4,7 @@ import {
   Terminal, ShieldCheck, Activity, Users, Target, Zap, 
   Lock, ArrowRight, LayoutDashboard,
   RefreshCw, Cpu, TrendingUp, Rocket, Server, ShieldAlert,
-  Wallet, Link as LinkIcon, Save, CheckCircle2, Globe, Key, AlertCircle, Info, BarChart3, User, Award, MoreVertical, Trash2
+  Wallet, Link as LinkIcon, Save, CheckCircle2, Globe, Key, AlertCircle, Info, BarChart3, User, Award, MoreVertical, Trash2, Search
 } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 import { NetworkUser, AdminConfig } from '../types';
@@ -107,7 +107,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const saved = localStorage.getItem('valuninja_admin_config');
     return saved ? JSON.parse(saved) : {
       thinkingBudget: 16000,
-      systemDirective: "Always prioritize absolute value and technical reliability.",
+      systemDirective: "Always prioritize absolute value and technical reliability. Strictly ground data in late 2025/2026.",
       modelSelection: 'gemini-3-pro-preview'
     };
   });
@@ -145,7 +145,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div className="absolute top-0 right-0 p-8 opacity-10">
             <NinjaIcon className="w-32 h-32 text-white" />
           </div>
-          
           <div className="relative z-10 space-y-8">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-white/5 rounded-2xl border border-white/10 mb-6">
@@ -154,16 +153,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <h2 className="text-3xl font-black text-white tracking-tighter">Tactical Override</h2>
               <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-2">Enter Commander Passcode</p>
             </div>
-
             <form onSubmit={handleLogin} className="space-y-4">
               <input 
-                type="password" 
-                value={passcode}
-                onChange={(e) => setPasscode(e.target.value)}
+                type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)}
                 placeholder="********"
                 className={`w-full bg-white/5 border-2 rounded-2xl px-6 py-4 text-white font-black text-center text-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all ${error ? 'border-rose-500 animate-shake' : 'border-white/10 focus:border-indigo-500'}`}
               />
-              <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 group shadow-xl shadow-indigo-500/20">
+              <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 group shadow-xl">
                 Unlock Command Center <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </form>
@@ -184,7 +180,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           <div>
             <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Command Center</h1>
             <p className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2 mt-1">
-              <Activity className="w-4 h-4" /> Systems Optimal • Recon Ver: 2026.1
+              <Activity className="w-4 h-4" /> Systems Optimal • Recon Ver: 2026.2
             </p>
           </div>
         </div>
@@ -200,7 +196,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
              </button>
            ))}
         </div>
-
         <button onClick={() => setIsAuthenticated(false)} className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg">Lock</button>
       </div>
 
@@ -208,10 +203,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {[
-              { label: 'Total Missions', value: stats.totalMissions, icon: <Target className="text-indigo-500" />, color: 'text-indigo-600' },
-              { label: 'Network Size', value: userNetwork.length, icon: <Users className="text-emerald-500" />, color: 'text-emerald-600' },
-              { label: 'Asset Extraction', value: `$${stats.totalValueScouted.toLocaleString()}`, icon: <Zap className="text-amber-500" />, color: 'text-amber-600' },
-              { label: 'AI Brain', value: adminConfig.modelSelection.split('-')[2].toUpperCase(), icon: <Cpu className="text-violet-500" />, color: 'text-violet-600' },
+              { label: 'Missions Conducted', value: stats.totalMissions, icon: <Target className="text-indigo-500" />, color: 'text-indigo-600' },
+              { label: 'Active Operatives', value: userNetwork.length, icon: <Users className="text-emerald-500" />, color: 'text-emerald-600' },
+              { label: 'Value Tracked', value: `$${stats.totalValueScouted.toLocaleString()}`, icon: <Zap className="text-amber-500" />, color: 'text-amber-600' },
+              { label: 'Recon Core', value: adminConfig.modelSelection.includes('pro') ? 'PRO' : 'FLASH', icon: <Cpu className="text-violet-500" />, color: 'text-violet-600' },
             ].map((s, i) => (
               <div key={i} className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
@@ -223,20 +218,33 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             ))}
           </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div className="bg-white p-10 rounded-[3rem] border border-slate-200 h-[500px] flex flex-col">
-              <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-8">Mission Flux Analytics</h3>
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Mission Flux Density</h3>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
+                  <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Real-time Telemetry</span>
+                </div>
+              </div>
               <div className="flex-1 w-full"><TacticalSparkline data={stats.history} /></div>
             </div>
-            <div className="bg-slate-900 p-8 rounded-[3rem] shadow-2xl h-[500px] flex flex-col border border-slate-800">
-               <h3 className="text-white font-black uppercase tracking-tight mb-8 flex items-center gap-3"><Terminal className="w-5 h-5 text-indigo-400" /> System Signal Feed</h3>
-               <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3 font-mono">
-                  {logs.map(log => (
-                    <div key={log.id} className="text-[10px] flex gap-4">
-                       <span className="text-slate-600 whitespace-nowrap">{log.time}</span>
-                       <span className={log.type === 'error' ? 'text-rose-400' : log.type === 'success' ? 'text-emerald-400' : 'text-slate-300'}>{log.msg}</span>
-                    </div>
-                  ))}
+            
+            <div className="bg-slate-900 p-8 rounded-[3rem] shadow-2xl h-[500px] flex flex-col border border-slate-800 relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-10 opacity-5 rotate-12"><Search className="w-64 h-64 text-white" /></div>
+               <h3 className="text-white font-black uppercase tracking-tight mb-8 flex items-center gap-3 relative z-10"><Terminal className="w-5 h-5 text-indigo-400" /> Command Signal Feed</h3>
+               <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3 font-mono relative z-10">
+                  {logs.length === 0 ? (
+                    <div className="h-full flex items-center justify-center text-slate-700 text-[10px] uppercase tracking-widest font-black">No Active Signal Logged</div>
+                  ) : (
+                    logs.map(log => (
+                      <div key={log.id} className="text-[10px] flex gap-4">
+                         <span className="text-slate-600 whitespace-nowrap">{log.time}</span>
+                         <span className={log.type === 'error' ? 'text-rose-400' : log.type === 'success' ? 'text-emerald-400' : 'text-slate-300'}>{log.msg}</span>
+                      </div>
+                    ))
+                  )}
                </div>
             </div>
           </div>
@@ -244,53 +252,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {activeTab === 'USER_INTEL' && (
-        <div className="bg-white rounded-[3rem] border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-[3rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4">
            <table className="w-full border-collapse">
               <thead>
                  <tr className="bg-slate-50 border-b border-slate-200">
                     <th className="p-6 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Operative</th>
-                    <th className="p-6 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Identity Sector</th>
-                    <th className="p-6 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Vault Assets</th>
+                    <th className="p-6 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Network Identifier</th>
+                    <th className="p-6 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Assets Secured</th>
                     <th className="p-6 text-left text-[10px] font-black uppercase tracking-widest text-slate-400">Protocol Rank</th>
-                    <th className="p-6 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Command Actions</th>
+                    <th className="p-6 text-center text-[10px] font-black uppercase tracking-widest text-slate-400">Tactical Actions</th>
                  </tr>
               </thead>
               <tbody>
-                 {userNetwork.map(user => (
-                   <tr key={user.email} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="p-6">
-                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center"><User className="w-5 h-5 text-indigo-400" /></div>
-                            <span className="font-black text-slate-900 uppercase tracking-tight">{user.username}</span>
-                         </div>
-                      </td>
-                      <td className="p-6 text-sm font-bold text-slate-500">{user.email}</td>
-                      <td className="p-6">
-                         <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black">{user.vault.length} Assets</span>
-                      </td>
-                      <td className="p-6">
-                         <div className="flex items-center gap-2">
-                            <Award className={`w-4 h-4 ${user.rank === 'SHINOBI' ? 'text-amber-500' : 'text-slate-300'}`} />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">{user.rank}</span>
-                         </div>
-                      </td>
-                      <td className="p-6">
-                         <div className="flex justify-center gap-2">
-                            <button 
-                              onClick={() => handlePromoteUser(user)}
-                              disabled={user.rank === 'SHINOBI'}
-                              className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-30 transition-all" 
-                              title="Promote Operative"
-                            >
-                               <TrendingUp className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-all" title="Terminate Identity">
-                               <Trash2 className="w-4 h-4" />
-                            </button>
-                         </div>
-                      </td>
-                   </tr>
-                 ))}
+                 {userNetwork.length === 0 ? (
+                    <tr><td colSpan={5} className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest">No Registered Operatives in Sector</td></tr>
+                 ) : (
+                    userNetwork.map(user => (
+                      <tr key={user.email} className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
+                        <td className="p-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><User className="w-5 h-5 text-indigo-400" /></div>
+                                <span className="font-black text-slate-900 uppercase tracking-tight">{user.username}</span>
+                            </div>
+                        </td>
+                        <td className="p-6 text-sm font-bold text-slate-500">{user.email}</td>
+                        <td className="p-6">
+                            <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black">{user.vault.length} Targets</span>
+                        </td>
+                        <td className="p-6">
+                            <div className="flex items-center gap-2">
+                                <Award className={`w-4 h-4 ${user.rank === 'SHINOBI' ? 'text-amber-500' : 'text-slate-300'}`} />
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">{user.rank}</span>
+                            </div>
+                        </td>
+                        <td className="p-6">
+                            <div className="flex justify-center gap-2">
+                                <button 
+                                  onClick={() => handlePromoteUser(user)}
+                                  disabled={user.rank === 'SHINOBI'}
+                                  className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-30 transition-all shadow-md active:scale-90" 
+                                  title="Promote Operative"
+                                >
+                                  <TrendingUp className="w-4 h-4" />
+                                </button>
+                                <button className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-all active:scale-90" title="Revoke Access">
+                                  <ShieldAlert className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </td>
+                      </tr>
+                    ))
+                 )}
               </tbody>
            </table>
         </div>
@@ -301,18 +313,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
            <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center"><Cpu className="w-6 h-6 text-indigo-600" /></div>
-                   <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">AI Tuning Protocol</h3>
+                   <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center shadow-inner"><Cpu className="w-6 h-6 text-indigo-600" /></div>
+                   <div>
+                      <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">AI Recon Calibrator</h3>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tuning Neural Scouting Vectors</p>
+                   </div>
                 </div>
-                <button onClick={handleSaveAdminConfig} className="bg-indigo-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-indigo-700 active:scale-95 transition-all">Save Config</button>
+                <button onClick={handleSaveAdminConfig} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-indigo-700 transition-all flex items-center gap-2">
+                   <Save className="w-4 h-4" /> Save Protocol
+                </button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                 <div className="space-y-6">
-                    <div className="space-y-3">
+                 <div className="space-y-8">
+                    <div className="space-y-4">
                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                          <span>Thinking Budget (Tokens)</span>
-                          <span className="text-indigo-600">{adminConfig.thinkingBudget} Tokens</span>
+                          <span>Thinking Tokens (Budget)</span>
+                          <span className="text-indigo-600 font-mono">{adminConfig.thinkingBudget}</span>
                        </label>
                        <input 
                          type="range" min="0" max="32768" step="1024"
@@ -320,31 +337,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                          onChange={(e) => setAdminConfig({...adminConfig, thinkingBudget: parseInt(e.target.value)})}
                          className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-indigo-600"
                        />
-                       <p className="text-[9px] text-slate-400 font-bold uppercase italic">Higher budget increases reconnaissance accuracy but raises latency.</p>
+                       <div className="flex justify-between text-[8px] font-black text-slate-300 uppercase">
+                          <span>Speed (0)</span>
+                          <span>Deep Analytics (32k)</span>
+                       </div>
                     </div>
 
                     <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Core Recon Model</label>
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Neural Strike Engine</label>
                        <select 
                         value={adminConfig.modelSelection}
                         onChange={(e) => setAdminConfig({...adminConfig, modelSelection: e.target.value as any})}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 font-black text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 font-black text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none appearance-none"
                        >
-                          <option value="gemini-3-pro-preview">GEMINI 3 PRO (ELITE INTEL)</option>
-                          <option value="gemini-3-flash-preview">GEMINI 3 FLASH (HIGH SPEED)</option>
+                          <option value="gemini-3-pro-preview">GEMINI 3 PRO (MAX ACCURACY)</option>
+                          <option value="gemini-3-flash-preview">GEMINI 3 FLASH (REAL-TIME)</option>
                        </select>
                     </div>
                  </div>
 
                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global System Directive</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                       Global Operational Directive
+                    </label>
                     <textarea 
                       value={adminConfig.systemDirective}
                       onChange={(e) => setAdminConfig({...adminConfig, systemDirective: e.target.value})}
                       placeholder="e.g. Always prioritize absolute value and technical reliability..."
-                      className="w-full h-40 bg-slate-50 border border-slate-200 rounded-2xl p-6 font-bold text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none resize-none"
+                      className="w-full h-48 bg-slate-50 border border-slate-200 rounded-2xl p-6 font-bold text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none resize-none shadow-inner"
                     />
-                    <p className="text-[9px] text-slate-400 font-bold uppercase italic">This directive is injected into every AI agent call.</p>
+                    <p className="text-[9px] text-slate-400 font-bold uppercase italic leading-tight">Injection: This directive is appended to every agent mission to eliminate bias and prioritize user value.</p>
                  </div>
               </div>
            </div>
@@ -352,23 +375,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {activeTab === 'AFFILIATES' && (
-        <div className="max-w-4xl mx-auto bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10">
+        <div className="max-w-4xl mx-auto bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10 animate-in fade-in">
            <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center"><Wallet className="w-6 h-6 text-emerald-600" /></div>
-                 <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Bounty IDs</h3>
+                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center shadow-inner"><Wallet className="w-6 h-6 text-emerald-600" /></div>
+                 <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Bounty Keyring</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Managing Referral Intelligence</p>
+                 </div>
               </div>
-              <button onClick={() => onUpdateAffiliates(affiliates)} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl">Inject Keys</button>
+              <button onClick={() => onUpdateAffiliates(affiliates)} className="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2">
+                 <Key className="w-4 h-4" /> Inject Protocols
+              </button>
            </div>
            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {['amazonTag', 'impactId', 'ebayId', 'bestBuyId'].map(k => (
                 <div key={k} className="space-y-3">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{k.replace(/([A-Z])/g, ' $1')}</label>
+                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">{k.replace(/([A-Z])/g, ' $1')}</label>
                    <input 
-                    type="text"
-                    value={(affiliates as any)[k]}
+                    type="text" value={(affiliates as any)[k]}
                     onChange={(e) => onUpdateAffiliates({...affiliates, [k]: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 font-black"
+                    placeholder="KEY_ID_0X..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 font-black focus:bg-white transition-all shadow-inner"
                    />
                 </div>
               ))}
@@ -377,17 +405,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {activeTab === 'SECURITY' && (
-        <div className="max-w-xl mx-auto bg-slate-900 p-10 rounded-[3rem] shadow-2xl space-y-8 text-center border border-slate-800">
-           <div className="w-20 h-20 bg-white/5 rounded-[2rem] flex items-center justify-center mx-auto mb-4 border border-white/10"><ShieldAlert className="w-10 h-10 text-rose-500" /></div>
-           <h3 className="text-2xl font-black text-white uppercase tracking-tight">Security Protocol Override</h3>
-           <p className="text-slate-400 text-sm font-medium">Inject a new Master Protocol Key. This will replace the existing commander access passcode.</p>
-           <input 
-             type="password"
-             placeholder="NEW PROTOCOL KEY"
-             className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 font-black text-white text-center focus:outline-none focus:border-indigo-500"
-             onBlur={(e) => e.target.value && onUpdatePasscode(e.target.value)}
-           />
-           <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="w-full py-4 border-2 border-rose-500/30 text-rose-500 hover:bg-rose-500 hover:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all">Emergency System Wipe</button>
+        <div className="max-w-xl mx-auto bg-slate-900 p-10 rounded-[4rem] shadow-2xl space-y-8 text-center border border-slate-800 relative overflow-hidden">
+           <div className="absolute inset-0 bg-rose-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+           <div className="w-20 h-20 bg-white/5 rounded-[2.5rem] flex items-center justify-center mx-auto mb-4 border border-white/10 shadow-2xl"><ShieldAlert className="w-10 h-10 text-rose-500" /></div>
+           <h3 className="text-2xl font-black text-white uppercase tracking-tight">Access Key Override</h3>
+           <p className="text-slate-400 text-sm font-medium leading-relaxed">Modify the master commander key. This re-keys the entire Command Center access protocol.</p>
+           <div className="space-y-4">
+              <input 
+                type="password" placeholder="NEW MASTER PROTOCOL KEY"
+                className="w-full bg-white/5 border border-white/10 rounded-3xl px-6 py-5 font-black text-white text-center focus:outline-none focus:border-indigo-500 tracking-widest"
+                onBlur={(e) => e.target.value && onUpdatePasscode(e.target.value)}
+              />
+              <button 
+                onClick={() => { if(confirm("ABSOLUTE DATA WIPE: Proceed?")) { localStorage.clear(); window.location.reload(); } }} 
+                className="w-full py-5 border-2 border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white rounded-3xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg"
+              >
+                Emergency System Scour (Factory Reset)
+              </button>
+           </div>
         </div>
       )}
     </div>
