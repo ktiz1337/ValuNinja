@@ -1,6 +1,7 @@
 
 import { GoogleGenAI } from "@google/genai";
 import { SpecAttribute, Product, AttributeType, PriceRange, RetailerLink, AdUnit, UserLocation, PricePoint, Briefing, MarketIntel, AdminConfig } from "../types";
+import { scrubProductLinks } from "./affiliateService";
 
 const CURRENT_DATE_CONTEXT = "Today is late 2025 (Nov/Dec), looking ahead into 2026.";
 
@@ -9,9 +10,14 @@ const getAdminConfig = (): AdminConfig => {
   if (saved) return JSON.parse(saved);
   return {
     thinkingBudget: 16000,
-    systemDirective: "Always prioritize absolute value and technical reliability. STATED PRICES MUST BE REAL AND GROUNDED.",
+    systemDirective: "Always prioritize absolute value and technical reliability. STATED PRICES MUST BE REAL AND GROUNDED. You are a neutral observer with NO bias toward specific retailers.",
     modelSelection: 'gemini-3-pro-preview'
   };
+};
+
+const getAffiliateConfig = () => {
+  const saved = localStorage.getItem('valuninja_affiliates');
+  return saved ? JSON.parse(saved) : { amazonTag: '', ebayId: '', bestBuyId: '', impactId: '' };
 };
 
 const cleanAndParseJSON = (text: string) => {
@@ -41,7 +47,7 @@ const cleanAndParseJSON = (text: string) => {
   }
 };
 
-const STORES = ['Amazon', 'Best Buy', 'Walmart', 'Target', 'B&H Photo', 'eBay', 'Newegg'];
+const STORES = ['Amazon', 'Best Buy', 'Walmart', 'Target', 'B&H Photo', 'eBay', 'Newegg', 'Direct Brand Site'];
 
 const generateSimulatedHistory = (currentPrice: number, currentStore?: string): PricePoint[] => {
   const history: PricePoint[] = [];
@@ -97,20 +103,16 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
   const query = encodeURIComponent(`${product.brand} ${product.name}`);
   
   if (product.sourceUrl && isRealUrl(product.sourceUrl)) {
-    let finalUrl = product.sourceUrl;
-    if (affiliates?.impactId && !finalUrl.includes('amazon')) {
-        finalUrl += (finalUrl.includes('?') ? '&' : '?') + `irclickid=${affiliates.impactId}`;
-    }
-    links.push({ name: `Direct: ${product.storeName || 'Verified Store'}`, url: finalUrl, icon: 'generic', isDirect: true });
+    links.push({ name: `Direct: ${product.storeName || 'Store'}`, url: product.sourceUrl, icon: 'generic', isDirect: true });
   }
 
+  // The AI provides the primary price point; we also provide alternative objective search links
   links.push({ name: 'Google Shopping', url: `https://www.google.com/search?q=${query}&tbm=shop`, icon: 'maps' });
+  links.push({ name: 'Amazon', url: `https://www.${region.domain}/s?k=${query}`, icon: 'amazon' });
+  links.push({ name: 'Best Buy', url: `https://www.${region.bestBuyDomain}/site/searchpage.jsp?st=${query}`, icon: 'bestbuy' });
   
-  let amzUrl = `https://www.${region.domain}/s?k=${query}`;
-  if (affiliates?.amazonTag) amzUrl += `&tag=${affiliates.amazonTag}`;
-  links.push({ name: 'Amazon Store', url: amzUrl, icon: 'amazon' });
-  
-  return links;
+  // POST-PROCESS: Only now do we wrap these objective links with affiliate IDs
+  return scrubProductLinks(links, affiliates || getAffiliateConfig());
 };
 
 export const identifyProductFromImage = async (base64Image: string): Promise<{ name: string; analysis: string; confidence: number }> => {
@@ -122,12 +124,8 @@ export const identifyProductFromImage = async (base64Image: string): Promise<{ n
   const prompt = `[CONTEXT: ${CURRENT_DATE_CONTEXT}] [DIRECTIVE: ${config.systemDirective}] 
   Act as a Shinobi Vision Specialist. Analyze this product image. 
   Determine exactly what it is (Brand and Model). 
-  Provide a brief tactical analysis of identifying markers (e.g., logo placement, port layout, silhouette).
-  Return JSON strictly: {
-    "name": "Exact Brand and Model Name",
-    "analysis": "Brief analysis of what markers led to this identification.",
-    "confidence": 1-100
-  }`;
+  Provide a brief tactical analysis of identifying markers.
+  Return JSON: {"name": "Brand Model", "analysis": "markers", "confidence": 1-100}`;
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -155,10 +153,9 @@ export const refreshProductPrice = async (product: Product): Promise<{ price: nu
   const ai = new GoogleGenAI({ apiKey });
   const region = getRegionInfo();
   
-  const prompt = `Deep Recon Mission [CONTEXT: ${CURRENT_DATE_CONTEXT}]: Find the CURRENT best price for the product: "${product.brand} ${product.name}" in ${region.countryName}. 
-  Use Search Grounding for REAL pricing from Google Shopping, Amazon, or local stores for late 2025/2026.
-  Output JSON strictly: {"price": number, "currency": "string", "store": "string"}
-  STRICTLY NO HALLUCINATIONS. If price is unknown, return the previous price.`;
+  const prompt = `Find the absolute lowest CURRENT price for "${product.brand} ${product.name}" in ${region.countryName}. 
+  Ignore any personal bias or preferred retailers. Just find the lowest verified price.
+  Output JSON: {"price": number, "currency": "string", "store": "string"}`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -190,17 +187,13 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: `Mission: Analyze "${query}" for ${region.countryName}. 
-      [CONTEXT: ${CURRENT_DATE_CONTEXT} Ensure analysis is strictly based on current 2025/2026 data. DO NOT hallucinate discontinued or older model information.]
+      [CONTEXT: ${CURRENT_DATE_CONTEXT}]
       [DIRECTIVE: ${config.systemDirective}]
-      If this is a GIFT or TRIP request, suggest attributes like 'Age Group', 'Interests', 'Seasonality', 'Recipient Type', 'Budget Tiers', etc.
-      Return JSON strictly: {
+      Suggest buying attributes and provide expert market intelligence.
+      Return JSON: {
         "attributes": [{"key": "string", "label": "string", "type": "NUMBER|STRING|BOOLEAN", "defaultValue": "any"}],
-        "marketGuide": {
-          "expertAdvice": "A detailed paragraph of expert buying/planning advice for this specific category.",
-          "technicalDepth": "A second paragraph going deep into technical specs or current market trends.",
-          "keyDifferentiators": ["Point 1", "Point 2", "Point 3"]
-        },
-        "suggestions": ["feature 1", "feature 2"],
+        "marketGuide": {"expertAdvice": "string", "technicalDepth": "string", "keyDifferentiators": ["string"]},
+        "suggestions": ["string"],
         "priceRange": {"min": number, "max": number, "currency": "string"},
         "adUnits": [{"brand": "string", "headline": "string", "description": "string", "cta": "string"}]
       }`,
@@ -218,13 +211,7 @@ export const analyzeProductCategory = async (query: string): Promise<{ attribute
     const defaultValues: Record<string, any> = { minPrice: 0, maxPrice: null, customQuery: '' };
     attributes.forEach((a: any) => { if (a.defaultValue !== undefined) defaultValues[a.key] = a.defaultValue; });
 
-    const marketGuide: MarketIntel = data.marketGuide || {
-      expertAdvice: "Analyzing category trends...",
-      technicalDepth: "Reviewing current market specifications...",
-      keyDifferentiators: ["Performance Standards", "Value Metrics"]
-    };
-
-    return { attributes, suggestions: data.suggestions || [], marketGuide, defaultValues, priceRange: data.priceRange || { min: 0, max: 5000, currency: region.currencySymbol }, adUnits: data.adUnits || [], region };
+    return { attributes, suggestions: data.suggestions || [], marketGuide: data.marketGuide, defaultValues, priceRange: data.priceRange || { min: 0, max: 5000, currency: region.currencySymbol }, adUnits: data.adUnits || [], region };
   } catch (err: any) {
     throw new Error(err.message || "Failed to analyze category");
   }
@@ -243,23 +230,17 @@ export const searchProducts = async (
   const ai = new GoogleGenAI({ apiKey });
   const region = getRegionInfo();
   const adminConfig = getAdminConfig();
+  const affiliateConfig = affiliates || getAffiliateConfig();
   
-  const prompt = `Mission: Find EXACTLY ${limit} best value options or products for: "${query}" in ${region.countryName}. 
-  [CONTEXT: ${CURRENT_DATE_CONTEXT} Use search grounding to ensure models, availability, and pricing are strictly current for 2025/2026. DO NOT hallucinate older data.]
+  const prompt = `Mission: Find exactly ${limit} best value products for: "${query}" in ${region.countryName}. 
   [DIRECTIVE: ${adminConfig.systemDirective}]
-  If this is a GIFT or TRIP search, prioritize highly-rated, available items or current destination deals.
-  Requirements: ${JSON.stringify(userValues)}. 
-  Use Search Grounding for REAL pricing. 
+  STRICT INDEPENDENCE: Your goal is to find the absolute lowest prices and highest quality units. DO NOT favor large retailers over smaller verified shops if the smaller shop has a better deal.
   Output strictly JSON: {
-    "summary": {
-       "overview": "A detailed strategic overview of why these products were selected...",
-       "deepDive": "A second detailed paragraph focusing on technical nuances and current market context...",
-       "checklist": ["Essential feature 1", "Expert tip 2", "Value factor 3"]
-    },
+    "summary": {"overview": "string", "deepDive": "string", "checklist": ["string"]},
     "products": [
       {
-        "brand": "Brand/Vendor", "name": "Model/Option Name", "price": number, "currency": "${region.currencySymbol}", 
-        "storeName": "Merchant/Platform", "sourceUrl": "URL", "description": "Specific value analysis", "specs": {"Key": "Value"}, 
+        "brand": "string", "name": "string", "price": number, "currency": "${region.currencySymbol}", 
+        "storeName": "string", "sourceUrl": "DIRECT_STORE_URL", "description": "string", "specs": {}, 
         "pros": [], "cons": [], "valueScore": 1-100, 
         "valueBreakdown": {"performance": 1-10, "buildQuality": 1-10, "featureSet": 1-10, "reliability": 1-10, "userSatisfaction": 1-10, "efficiency": 1-10, "innovation": 1-10, "longevity": 1-10, "ergonomics": 1-10, "dealStrength": 1-10}
       }
@@ -281,23 +262,19 @@ export const searchProducts = async (
     const data = cleanAndParseJSON(response.text || '');
     if (!data || !Array.isArray(data.products)) throw new Error("No results found.");
 
-    const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
-    const groundingSources = chunks.map(c => ({ title: c.web?.title || "", uri: c.web?.uri || "" })).filter(s => isRealUrl(s.uri));
+    const groundingSources = (response.candidates?.[0]?.groundingMetadata?.groundingChunks || [])
+      .map(c => ({ title: c.web?.title || "", uri: c.web?.uri || "" }))
+      .filter(s => s.uri && s.uri.startsWith('http'));
 
     const products = data.products.map((p: any) => ({
       ...p,
       id: Math.random().toString(36).substr(2, 9),
-      retailers: generateRetailerLinks(p, region, affiliates),
+      // Links are objectively generated and then wrapped based on config
+      retailers: generateRetailerLinks(p, region, affiliateConfig),
       priceHistory: generateSimulatedHistory(p.price, p.storeName)
     }));
 
-    const summaryObj: Briefing = data.summary || {
-      overview: "Strike results generated.",
-      deepDive: "Analyzing market nuances for technical efficiency.",
-      checklist: ["Verify seller rating", "Check warranty terms"]
-    };
-
-    return { products, summary: summaryObj, sources: groundingSources, region };
+    return { products, summary: data.summary, sources: groundingSources, region };
   } catch (error: any) { 
     throw new Error(error.message || "Scouting failed."); 
   }

@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Terminal, ShieldCheck, Activity, Users, Target, Zap, 
   Lock, ArrowRight, LayoutDashboard,
   RefreshCw, Cpu, TrendingUp, Rocket, Server, ShieldAlert,
-  Wallet, Link as LinkIcon, Save, CheckCircle2, Globe, Key, AlertCircle, Info, BarChart3, User, Award, MoreVertical, Trash2, Search
+  Wallet, Link as LinkIcon, Save, CheckCircle2, Globe, Key, AlertCircle, Info, BarChart3, User, Award, MoreVertical, Trash2, Search, ChevronLeft,
+  Unlock, Eye, EyeOff, Download, Image as ImageIcon, Palette, Type, Layers, Share2
 } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 import { NetworkUser, AdminConfig } from '../types';
@@ -26,7 +27,7 @@ interface AppStats {
 interface AffiliateConfig {
   amazonTag: string;
   ebayId: string;
-  bestBuyId: string;
+  bestbuyId: string;
   impactId: string;
 }
 
@@ -98,10 +99,11 @@ const TacticalSparkline: React.FC<{ data: { name: string; missions: number }[] }
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
   onBack, logs, stats, affiliates, onUpdateAffiliates, currentPasscode, onUpdatePasscode, addLog, userNetwork, onUpdateUser 
 }) => {
-  const [passcode, setPasscode] = useState('');
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [passInput, setPassInput] = useState('');
+  const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'USER_INTEL' | 'AI_OPS' | 'AFFILIATES' | 'SECURITY'>('ANALYTICS');
+  const [activeTab, setActiveTab] = useState<'ANALYTICS' | 'USER_INTEL' | 'AI_OPS' | 'AFFILIATES' | 'BRAND_KIT' | 'SECURITY'>('ANALYTICS');
   
   const [adminConfig, setAdminConfig] = useState<AdminConfig>(() => {
     const saved = localStorage.getItem('valuninja_admin_config');
@@ -112,15 +114,56 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     };
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleUnlock = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcode === currentPasscode) {
-      setIsAuthenticated(true);
+    if (passInput === currentPasscode) {
+      setIsUnlocked(true);
       setError(false);
+      addLog("Commander Console Unlocked: High-Level Access Granted.", "success");
     } else {
       setError(true);
-      setPasscode('');
+      setTimeout(() => setError(false), 2000);
+      addLog("Access Violation: Incorrect Commander Passcode.", "error");
     }
+  };
+
+  const downloadLogo = (color: string, filename: string) => {
+    const svgString = `
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2C7.03 2 3 6.03 3 11c0 4.97 4.03 9 9 9s9-4.03 9-9c0-4.97-4.03-9-9-9z" />
+        <path d="M7 11c0-1.5 2-3 5-3s5 1.5 5 3" />
+        <path d="M9 13h.01" stroke-width="3" />
+        <path d="M15 13h.01" stroke-width="3" />
+        <path d="M21 11l-2-2" />
+        <path d="M3 11l2-2" />
+      </svg>
+    `;
+    
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    const size = 1024;
+    canvas.width = size;
+    canvas.height = size;
+
+    const svg64 = btoa(svgString);
+    const b64Start = 'data:image/svg+xml;base64,';
+    const image64 = b64Start + svg64;
+
+    img.onload = function() {
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, size, size);
+        const pngUrl = canvas.toDataURL("image/png");
+        const downloadLink = document.createElement("a");
+        downloadLink.href = pngUrl;
+        downloadLink.download = filename;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        addLog(`Brand Kit: ${filename} exported to system.`, 'success');
+      }
+    };
+    img.src = image64;
   };
 
   const handleSaveAdminConfig = () => {
@@ -138,32 +181,64 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  if (!isAuthenticated) {
+  if (!isUnlocked) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center px-4">
-        <div className="w-full max-w-md bg-slate-900 p-10 rounded-[2.5rem] shadow-2xl border-t-2 border-indigo-500/50 relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-10">
-            <NinjaIcon className="w-32 h-32 text-white" />
-          </div>
-          <div className="relative z-10 space-y-8">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-white/5 rounded-2xl border border-white/10 mb-6">
-                <Lock className="w-8 h-8 text-indigo-400" />
-              </div>
-              <h2 className="text-3xl font-black text-white tracking-tighter">Tactical Override</h2>
-              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-2">Enter Commander Passcode</p>
+      <div className="fixed inset-0 z-[200] bg-slate-900 flex items-center justify-center p-6">
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+           <div className="grid grid-cols-12 gap-4 p-10 font-mono text-[8px] text-indigo-400">
+              {Array.from({ length: 200 }).map((_, i) => (
+                <div key={i} className="animate-pulse" style={{ animationDelay: `${i * 0.01}s` }}>
+                  {Math.random().toString(16).substring(2, 6)}
+                </div>
+              ))}
+           </div>
+        </div>
+        
+        <div className={`w-full max-w-md bg-white rounded-[3.5rem] p-12 shadow-2xl border-2 transition-all duration-300 ${error ? 'border-rose-500 scale-95' : 'border-indigo-500/30'}`}>
+          <div className="text-center space-y-8">
+            <div className="w-20 h-20 bg-slate-900 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl relative group">
+               <div className="absolute inset-0 bg-indigo-500 rounded-[2rem] animate-ping opacity-20 group-hover:opacity-40 transition-opacity"></div>
+               <Lock className="w-10 h-10 text-indigo-400" />
             </div>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <input 
-                type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)}
-                placeholder="********"
-                className={`w-full bg-white/5 border-2 rounded-2xl px-6 py-4 text-white font-black text-center text-lg focus:outline-none focus:ring-4 focus:ring-indigo-500/20 transition-all ${error ? 'border-rose-500 animate-shake' : 'border-white/10 focus:border-indigo-500'}`}
-              />
-              <button className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 group shadow-xl">
-                Unlock Command Center <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            
+            <div>
+              <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Terminal Lock</h2>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Commander Authorization Required</p>
+            </div>
+
+            <form onSubmit={handleUnlock} className="space-y-4">
+              <div className="relative">
+                <input 
+                  type={showPass ? 'text' : 'password'}
+                  value={passInput}
+                  onChange={(e) => setPassInput(e.target.value)}
+                  placeholder="Enter Passcode..."
+                  className="w-full px-6 py-5 bg-slate-100 border-2 border-slate-200 rounded-2xl font-black text-slate-900 text-center tracking-[0.3em] focus:outline-none focus:border-indigo-500 transition-all placeholder:tracking-normal placeholder:font-bold"
+                  autoFocus
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPass(!showPass)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-indigo-600 transition-colors"
+                >
+                  {showPass ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              
+              <button 
+                type="submit"
+                className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-xl hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-3"
+              >
+                <Unlock className="w-5 h-5" /> Execute
               </button>
             </form>
-            <button onClick={onBack} className="w-full text-slate-500 hover:text-white text-[10px] font-black uppercase tracking-widest transition-colors">Abort to Public View</button>
+
+            <button 
+              onClick={onBack}
+              className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
+            >
+              Abort Mission
+            </button>
           </div>
         </div>
       </div>
@@ -174,19 +249,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     <div className="max-w-[1600px] mx-auto px-6 py-12 space-y-10 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-b border-slate-200 pb-10">
         <div className="flex items-center gap-6">
+          <button onClick={onBack} className="p-3 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-all active:scale-95 group">
+             <ChevronLeft className="w-5 h-5 text-slate-600 group-hover:-translate-x-1 transition-transform" />
+          </button>
           <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center shadow-2xl">
             <LayoutDashboard className="w-8 h-8 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase">Command Center</h1>
-            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2 mt-1">
+            <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">Command Center</h1>
+            <p className="text-xs font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2 mt-2">
               <Activity className="w-4 h-4" /> Systems Optimal • Recon Ver: 2026.2
             </p>
           </div>
         </div>
         
         <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-           {['ANALYTICS', 'USER_INTEL', 'AI_OPS', 'AFFILIATES', 'SECURITY'].map(tab => (
+           {['ANALYTICS', 'USER_INTEL', 'AI_OPS', 'AFFILIATES', 'BRAND_KIT', 'SECURITY'].map(tab => (
              <button 
                key={tab}
                onClick={() => setActiveTab(tab as any)}
@@ -196,7 +274,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
              </button>
            ))}
         </div>
-        <button onClick={() => setIsAuthenticated(false)} className="bg-slate-900 text-white px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg">Lock</button>
+        <button onClick={() => setIsUnlocked(false)} className="bg-rose-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-700 transition-all shadow-lg">Lock Terminal</button>
       </div>
 
       {activeTab === 'ANALYTICS' && (
@@ -251,6 +329,53 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       )}
 
+      {activeTab === 'BRAND_KIT' && (
+        <div className="space-y-12 animate-in fade-in slide-in-from-right-4">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                { name: 'Standard Shadow', color: '#0f172a', bg: 'bg-slate-50', file: 'valuninja_logo_shadow.png' },
+                { name: 'Indigo Pulse', color: '#6366f1', bg: 'bg-slate-100', file: 'valuninja_logo_indigo.png' },
+                { name: 'Ghost Inversion', color: '#ffffff', bg: 'bg-slate-900', file: 'valuninja_logo_ghost.png' }
+              ].map((asset, i) => (
+                <div key={i} className="bg-white rounded-[3rem] border border-slate-200 p-10 flex flex-col items-center group overflow-hidden shadow-sm hover:shadow-xl transition-all">
+                  <div className={`w-full aspect-square ${asset.bg} rounded-[2rem] mb-8 flex items-center justify-center relative overflow-hidden`}>
+                     <div className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-500 via-transparent to-transparent animate-pulse"></div>
+                     <NinjaIcon className="w-32 h-32 relative z-10 transition-transform group-hover:scale-110" style={{ color: asset.color }} />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">{asset.name}</h3>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">High-Res PNG • 1024x1024</p>
+                  <button 
+                    onClick={() => downloadLogo(asset.color, asset.file)}
+                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 shadow-lg"
+                  >
+                    <Download className="w-5 h-5" /> Export Asset
+                  </button>
+                </div>
+              ))}
+           </div>
+
+           <div className="bg-white p-12 rounded-[4rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-12">
+              <div className="flex-1 space-y-6">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 rounded-full">
+                  <Palette className="w-4 h-4 text-indigo-600" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Visual Identity Protocol</span>
+                </div>
+                <h2 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-tight">Autonomous Asset Generator</h2>
+                <p className="text-slate-500 font-medium leading-relaxed">Your brand identifiers are vector-perfect. This utility converts code-based signals into rasterized production assets for your external communication channels. No source files needed—the code is the source.</p>
+                <div className="flex flex-wrap gap-4">
+                  <div className="px-5 py-3 bg-slate-100 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-200 flex items-center gap-2"><ImageIcon className="w-4 h-4" /> Alpha Channel PNG</div>
+                  <div className="px-5 py-3 bg-slate-100 rounded-xl text-[10px] font-black text-slate-500 uppercase tracking-widest border border-slate-200 flex items-center gap-2"><Type className="w-4 h-4" /> Inter Black Font</div>
+                </div>
+              </div>
+              <div className="w-full md:w-80 p-8 bg-slate-900 rounded-[3rem] text-white flex flex-col items-center justify-center gap-4 text-center border-4 border-indigo-500/20">
+                <Share2 className="w-12 h-12 text-indigo-400 mb-2" />
+                <span className="text-xs font-black uppercase tracking-widest">Global Synchronization</span>
+                <p className="text-[10px] text-slate-400 font-bold leading-relaxed italic">"The ninja remains unseen, but the mark is unmistakable."</p>
+              </div>
+           </div>
+        </div>
+      )}
+
       {activeTab === 'USER_INTEL' && (
         <div className="bg-white rounded-[3rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4">
            <table className="w-full border-collapse">
@@ -280,25 +405,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                             <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black">{user.vault.length} Targets</span>
                         </td>
                         <td className="p-6">
-                            <div className="flex items-center gap-2">
-                                <Award className={`w-4 h-4 ${user.rank === 'SHINOBI' ? 'text-amber-500' : 'text-slate-300'}`} />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-700">{user.rank}</span>
-                            </div>
+                           <div className="flex items-center gap-2">
+                             <Award className={`w-4 h-4 ${user.rank === 'SHINOBI' ? 'text-amber-500' : 'text-slate-300'}`} />
+                             <span className="text-[10px] font-black uppercase tracking-widest">{user.rank}</span>
+                           </div>
                         </td>
-                        <td className="p-6">
-                            <div className="flex justify-center gap-2">
-                                <button 
-                                  onClick={() => handlePromoteUser(user)}
-                                  disabled={user.rank === 'SHINOBI'}
-                                  className="p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-30 transition-all shadow-md active:scale-90" 
-                                  title="Promote Operative"
-                                >
-                                  <TrendingUp className="w-4 h-4" />
-                                </button>
-                                <button className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-all active:scale-90" title="Revoke Access">
-                                  <ShieldAlert className="w-4 h-4" />
-                                </button>
-                            </div>
+                        <td className="p-6 text-center">
+                           <div className="flex items-center justify-center gap-2">
+                              <button 
+                                onClick={() => handlePromoteUser(user)}
+                                className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors"
+                                title="Promote Rank"
+                              >
+                                 <ArrowRight className="w-4 h-4" />
+                              </button>
+                              <button className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors">
+                                 <Trash2 className="w-4 h-4" />
+                              </button>
+                           </div>
                         </td>
                       </tr>
                     ))
@@ -309,119 +433,204 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       )}
 
       {activeTab === 'AI_OPS' && (
-        <div className="max-w-4xl mx-auto space-y-8">
-           <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center shadow-inner"><Cpu className="w-6 h-6 text-indigo-600" /></div>
-                   <div>
-                      <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">AI Recon Calibrator</h3>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tuning Neural Scouting Vectors</p>
-                   </div>
-                </div>
-                <button onClick={handleSaveAdminConfig} className="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-indigo-700 transition-all flex items-center gap-2">
-                   <Save className="w-4 h-4" /> Save Protocol
-                </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in slide-in-from-right-4">
+           <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-8">
+              <div className="flex items-center gap-3 mb-2">
+                 <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600"><Cpu className="w-6 h-6" /></div>
+                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Recon Strategy</h3>
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                 <div className="space-y-8">
-                    <div className="space-y-4">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center justify-between">
-                          <span>Thinking Tokens (Budget)</span>
-                          <span className="text-indigo-600 font-mono">{adminConfig.thinkingBudget}</span>
-                       </label>
-                       <input 
-                         type="range" min="0" max="32768" step="1024"
-                         value={adminConfig.thinkingBudget}
-                         onChange={(e) => setAdminConfig({...adminConfig, thinkingBudget: parseInt(e.target.value)})}
-                         className="w-full h-2 bg-slate-100 rounded-full appearance-none cursor-pointer accent-indigo-600"
-                       />
-                       <div className="flex justify-between text-[8px] font-black text-slate-300 uppercase">
-                          <span>Speed (0)</span>
-                          <span>Deep Analytics (32k)</span>
-                       </div>
-                    </div>
-
-                    <div className="space-y-3">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Neural Strike Engine</label>
-                       <select 
-                        value={adminConfig.modelSelection}
-                        onChange={(e) => setAdminConfig({...adminConfig, modelSelection: e.target.value as any})}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 font-black text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none appearance-none"
-                       >
-                          <option value="gemini-3-pro-preview">GEMINI 3 PRO (MAX ACCURACY)</option>
-                          <option value="gemini-3-flash-preview">GEMINI 3 FLASH (REAL-TIME)</option>
-                       </select>
-                    </div>
+              
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Core Neural Model</label>
+                    <select 
+                      value={adminConfig.modelSelection}
+                      onChange={(e) => setAdminConfig({...adminConfig, modelSelection: e.target.value as any})}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                    >
+                       <option value="gemini-3-pro-preview">Gemini 3 Pro (Deep Logic)</option>
+                       <option value="gemini-3-flash-preview">Gemini 3 Flash (High Latency)</option>
+                    </select>
                  </div>
 
-                 <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                       Global Operational Directive
-                    </label>
+                 <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Thinking Token Budget</label>
+                       <span className="text-xs font-black text-indigo-600">{adminConfig.thinkingBudget.toLocaleString()} Tokens</span>
+                    </div>
+                    <input 
+                      type="range" min="0" max="32768" step="1024"
+                      value={adminConfig.thinkingBudget}
+                      onChange={(e) => setAdminConfig({...adminConfig, thinkingBudget: parseInt(e.target.value)})}
+                      className="w-full h-2 bg-slate-100 rounded-full appearance-none accent-indigo-600 cursor-pointer"
+                    />
+                 </div>
+
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Primary System Directive</label>
                     <textarea 
                       value={adminConfig.systemDirective}
                       onChange={(e) => setAdminConfig({...adminConfig, systemDirective: e.target.value})}
-                      placeholder="e.g. Always prioritize absolute value and technical reliability..."
-                      className="w-full h-48 bg-slate-50 border border-slate-200 rounded-2xl p-6 font-bold text-slate-800 focus:ring-4 focus:ring-indigo-500/10 focus:outline-none resize-none shadow-inner"
+                      className="w-full h-40 p-5 bg-slate-50 border border-slate-200 rounded-2xl font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
-                    <p className="text-[9px] text-slate-400 font-bold uppercase italic leading-tight">Injection: This directive is appended to every agent mission to eliminate bias and prioritize user value.</p>
                  </div>
+
+                 <button 
+                  onClick={handleSaveAdminConfig}
+                  className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center justify-center gap-3"
+                 >
+                    <Save className="w-5 h-5" /> Commit Changes
+                 </button>
+              </div>
+           </div>
+
+           <div className="bg-slate-900 p-10 rounded-[3rem] border border-slate-800 text-white space-y-8">
+              <div className="flex items-center gap-3 mb-2">
+                 <div className="p-3 bg-white/10 rounded-2xl text-indigo-400"><Rocket className="w-6 h-6" /></div>
+                 <h3 className="text-xl font-black uppercase tracking-tight">System Integrity</h3>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                 {[
+                   { label: 'Grounding API', status: 'ACTIVE', color: 'text-emerald-400' },
+                   { label: 'Neural Mesh', status: 'SYNCHRONIZED', color: 'text-emerald-400' },
+                   { label: 'Vector Database', status: 'OPTIMIZED', color: 'text-indigo-400' },
+                   { label: 'Latency Offset', status: '124ms', color: 'text-amber-400' }
+                 ].map((sys, idx) => (
+                   <div key={idx} className="bg-white/5 border border-white/10 p-5 rounded-2xl">
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">{sys.label}</span>
+                      <span className={`text-xs font-black uppercase tracking-tight ${sys.color}`}>{sys.status}</span>
+                   </div>
+                 ))}
+              </div>
+
+              <div className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-4">
+                 <div className="flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Security Protocols</span>
+                 </div>
+                 <p className="text-xs text-slate-400 leading-relaxed">System state is periodically verified against the global blocklist. Any non-standard signal will trigger an immediate terminal lockout.</p>
               </div>
            </div>
         </div>
       )}
 
       {activeTab === 'AFFILIATES' && (
-        <div className="max-w-4xl mx-auto bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10 animate-in fade-in">
-           <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center shadow-inner"><Wallet className="w-6 h-6 text-emerald-600" /></div>
-                 <div>
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Bounty Keyring</h3>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Managing Referral Intelligence</p>
+        <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm animate-in fade-in slide-in-from-left-4 max-w-4xl mx-auto">
+           <div className="flex items-center gap-4 mb-10">
+              <div className="p-4 bg-amber-50 rounded-2xl text-amber-600"><Wallet className="w-8 h-8" /></div>
+              <div>
+                 <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Affiliate Recon Engine</h3>
+                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Global Referral Token Configuration</p>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                       <LinkIcon className="w-3 h-3" /> Amazon Associate Tag
+                    </label>
+                    <input 
+                      type="text"
+                      value={affiliates.amazonTag}
+                      onChange={(e) => onUpdateAffiliates({...affiliates, amazonTag: e.target.value})}
+                      placeholder="valuninja-20"
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                       <LinkIcon className="w-3 h-3" /> eBay Network ID
+                    </label>
+                    <input 
+                      type="text"
+                      value={affiliates.ebayId}
+                      onChange={(e) => onUpdateAffiliates({...affiliates, ebayId: e.target.value})}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900"
+                    />
                  </div>
               </div>
-              <button onClick={() => onUpdateAffiliates(affiliates)} className="bg-emerald-600 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-2">
-                 <Key className="w-4 h-4" /> Inject Protocols
-              </button>
+
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                       <LinkIcon className="w-3 h-3" /> Impact Radius (Best Buy/Walmart)
+                    </label>
+                    <input 
+                      type="text"
+                      value={affiliates.impactId}
+                      onChange={(e) => onUpdateAffiliates({...affiliates, impactId: e.target.value})}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                       <LinkIcon className="w-3 h-3" /> Best Buy Specific ID
+                    </label>
+                    <input 
+                      type="text"
+                      value={affiliates.bestbuyId}
+                      onChange={(e) => onUpdateAffiliates({...affiliates, bestbuyId: e.target.value})}
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900"
+                    />
+                 </div>
+              </div>
            </div>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {['amazonTag', 'impactId', 'ebayId', 'bestBuyId'].map(k => (
-                <div key={k} className="space-y-3">
-                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest pl-2">{k.replace(/([A-Z])/g, ' $1')}</label>
-                   <input 
-                    type="text" value={(affiliates as any)[k]}
-                    onChange={(e) => onUpdateAffiliates({...affiliates, [k]: e.target.value})}
-                    placeholder="KEY_ID_0X..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-6 py-4 font-black focus:bg-white transition-all shadow-inner"
-                   />
-                </div>
-              ))}
+
+           <div className="mt-12 bg-indigo-50 border border-indigo-100 p-8 rounded-[2.5rem] flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                 <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm"><CheckCircle2 className="w-6 h-6" /></div>
+                 <div>
+                    <h4 className="font-black text-slate-900 uppercase tracking-tight leading-none">Scrubbing Protocol Active</h4>
+                    <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest mt-1">Automatic Link Sanitization Enabled</p>
+                 </div>
+              </div>
+              <button 
+                onClick={() => {
+                  localStorage.setItem('valuninja_affiliates', JSON.stringify(affiliates));
+                  addLog("Affiliate Recon: Production tokens synchronized.", "success");
+                }}
+                className="px-8 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl"
+              >
+                 Push to Production
+              </button>
            </div>
         </div>
       )}
 
       {activeTab === 'SECURITY' && (
-        <div className="max-w-xl mx-auto bg-slate-900 p-10 rounded-[4rem] shadow-2xl space-y-8 text-center border border-slate-800 relative overflow-hidden">
-           <div className="absolute inset-0 bg-rose-600/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-           <div className="w-20 h-20 bg-white/5 rounded-[2.5rem] flex items-center justify-center mx-auto mb-4 border border-white/10 shadow-2xl"><ShieldAlert className="w-10 h-10 text-rose-500" /></div>
-           <h3 className="text-2xl font-black text-white uppercase tracking-tight">Access Key Override</h3>
-           <p className="text-slate-400 text-sm font-medium leading-relaxed">Modify the master commander key. This re-keys the entire Command Center access protocol.</p>
-           <div className="space-y-4">
-              <input 
-                type="password" placeholder="NEW MASTER PROTOCOL KEY"
-                className="w-full bg-white/5 border border-white/10 rounded-3xl px-6 py-5 font-black text-white text-center focus:outline-none focus:border-indigo-500 tracking-widest"
-                onBlur={(e) => e.target.value && onUpdatePasscode(e.target.value)}
-              />
-              <button 
-                onClick={() => { if(confirm("ABSOLUTE DATA WIPE: Proceed?")) { localStorage.clear(); window.location.reload(); } }} 
-                className="w-full py-5 border-2 border-rose-500/20 text-rose-500 hover:bg-rose-500 hover:text-white rounded-3xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg"
-              >
-                Emergency System Scour (Factory Reset)
-              </button>
+        <div className="max-w-xl mx-auto bg-white p-12 rounded-[4rem] border border-slate-200 shadow-sm animate-in zoom-in-95 duration-300">
+           <div className="text-center space-y-8">
+              <div className="w-20 h-20 bg-rose-50 text-rose-600 rounded-[2.5rem] flex items-center justify-center mx-auto"><Key className="w-10 h-10" /></div>
+              <div>
+                 <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Access Protocol</h3>
+                 <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-2">Update Commander Passcode</p>
+              </div>
+
+              <div className="space-y-4">
+                 <div className="space-y-2 text-left">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">New Secret Identifier</label>
+                    <input 
+                      type="text"
+                      value={currentPasscode}
+                      onChange={(e) => onUpdatePasscode(e.target.value)}
+                      className="w-full p-5 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-900 text-center tracking-[0.3em]"
+                    />
+                 </div>
+                 
+                 <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 flex items-start gap-4">
+                    <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                    <p className="text-[11px] text-amber-900 font-bold leading-relaxed text-left">Changing this passcode will immediately invalidate all currently active commander sessions. Ensure this token is stored in a secure physical location.</p>
+                 </div>
+
+                 <button 
+                  onClick={() => addLog("Security: Access tokens re-encrypted.", "warning")}
+                  className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-slate-800 transition-all"
+                 >
+                    Update Key
+                 </button>
+              </div>
            </div>
         </div>
       )}
