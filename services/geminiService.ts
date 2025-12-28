@@ -2,7 +2,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { SpecAttribute, Product, AttributeType, PriceRange, RetailerLink, AdUnit, UserLocation, PricePoint, Briefing, MarketIntel, AdminConfig } from "../types";
 
-// Current temporal context to ensure the AI doesn't rely on outdated data
 const CURRENT_DATE_CONTEXT = "Today is late 2025 (Nov/Dec), looking ahead into 2026.";
 
 const getAdminConfig = (): AdminConfig => {
@@ -114,13 +113,21 @@ const generateRetailerLinks = (product: Partial<Product>, region: RegionInfo, af
   return links;
 };
 
-export const identifyProductFromImage = async (base64Image: string): Promise<string> => {
+export const identifyProductFromImage = async (base64Image: string): Promise<{ name: string; analysis: string; confidence: number }> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("ENVIRONMENT_AUTH_FAILURE");
 
   const ai = new GoogleGenAI({ apiKey });
   const config = getAdminConfig();
-  const prompt = `[CONTEXT: ${CURRENT_DATE_CONTEXT}] [DIRECTIVE: ${config.systemDirective}] Identify this product exactly. Return ONLY the Brand and Model name. If you cannot identify it, return 'Unknown Product'. STRICTLY NO HALLUCINATIONS.`;
+  const prompt = `[CONTEXT: ${CURRENT_DATE_CONTEXT}] [DIRECTIVE: ${config.systemDirective}] 
+  Act as a Shinobi Vision Specialist. Analyze this product image. 
+  Determine exactly what it is (Brand and Model). 
+  Provide a brief tactical analysis of identifying markers (e.g., logo placement, port layout, silhouette).
+  Return JSON strictly: {
+    "name": "Exact Brand and Model Name",
+    "analysis": "Brief analysis of what markers led to this identification.",
+    "confidence": 1-100
+  }`;
   
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -129,10 +136,16 @@ export const identifyProductFromImage = async (base64Image: string): Promise<str
         { inlineData: { data: base64Image.split(',')[1], mimeType: 'image/jpeg' } },
         { text: prompt }
       ]
-    }
+    },
+    config: { responseMimeType: "application/json" }
   });
 
-  return response.text?.trim() || "Unknown Product";
+  const data = cleanAndParseJSON(response.text || '{}');
+  return {
+    name: data.name || "Unknown Product",
+    analysis: data.analysis || "Optical resolution inconclusive.",
+    confidence: data.confidence || 0
+  };
 };
 
 export const refreshProductPrice = async (product: Product): Promise<{ price: number, currency: string, store: string }> => {

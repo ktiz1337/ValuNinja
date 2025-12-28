@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldAlert, Gavel, Scale, FileText, ChevronLeft, AlertTriangle } from 'lucide-react';
 
 export const TermsOfService: React.FC<{ onBack: () => void }> = ({ onBack }) => {
@@ -15,7 +16,7 @@ export const TermsOfService: React.FC<{ onBack: () => void }> = ({ onBack }) => 
             <span className="text-[10px] font-black uppercase tracking-widest text-amber-800">Terms of Engagement</span>
           </div>
           <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tighter">Engagement Protocol</h1>
-          <p className="text-xl text-slate-500 font-medium">The rules of the Ronin marketplace.</p>
+          <p className="text-xl text-slate-500 font-medium">The rules of the ValuNinja marketplace.</p>
         </header>
 
         <section className="space-y-12">

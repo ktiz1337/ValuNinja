@@ -1,6 +1,6 @@
 
 import React, { useRef } from 'react';
-import { Search, MapPin, Target, Globe, Settings2, ShieldCheck, Zap, Navigation, Crosshair, Camera, Award, LineChart, Cpu, Fingerprint, LogIn, RefreshCw, Gift } from 'lucide-react';
+import { Search, MapPin, Target, Globe, Settings2, ShieldCheck, Zap, Navigation, Crosshair, Camera, Award, LineChart, Cpu, Fingerprint, LogIn, RefreshCw, Gift, Layers } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 import { AdSenseUnit } from './AdSenseUnit';
 import { UserLocation } from '../types';
@@ -10,6 +10,8 @@ interface HeroProps {
   onPhotoScout: (base64Image: string) => void;
   isAnalyzing: boolean;
   location?: UserLocation;
+  resultsLimit: number;
+  onResultsLimitUpdate: (limit: number) => void;
   onLocationUpdate: (loc: Partial<UserLocation>) => void;
   onLocationRequest: () => void;
   isLoggedIn: boolean;
@@ -21,6 +23,8 @@ export const Hero: React.FC<HeroProps> = ({
   onPhotoScout,
   isAnalyzing, 
   location, 
+  resultsLimit,
+  onResultsLimitUpdate,
   onLocationUpdate, 
   onLocationRequest,
   isLoggedIn,
@@ -191,26 +195,51 @@ export const Hero: React.FC<HeroProps> = ({
 
               <div className={`w-full overflow-hidden transition-all duration-300 ease-in-out ${showConfig ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                   <div className="bg-white border-2 border-indigo-50 rounded-[2.5rem] p-8 shadow-xl mt-4 text-left space-y-8">
-                      <div className="space-y-3">
-                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
-                              <Crosshair className="w-3.5 h-3.5 text-indigo-500" />
-                              Strategy Protocol
-                          </label>
-                          <div className="grid grid-cols-3 p-1 bg-slate-50 rounded-2xl gap-1">
-                              {[
-                                  { id: 'GLOBAL', label: 'Global', icon: <Globe className="w-4 h-4" /> },
-                                  { id: 'HYBRID', label: 'Hybrid', icon: <Zap className="w-4 h-4" /> },
-                                  { id: 'LOCAL', label: 'Local Only', icon: <MapPin className="w-4 h-4" /> }
-                              ].map(m => (
-                                  <button
-                                      key={m.id}
-                                      onClick={() => setMode(m.id as any)}
-                                      className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all ${getActiveMode() === m.id ? 'bg-white text-slate-900 shadow-md border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
-                                  >
-                                      {m.icon}
-                                      <span className="text-[9px] font-black uppercase tracking-widest">{m.label}</span>
-                                  </button>
-                              ))}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div className="space-y-3">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                  <Crosshair className="w-3.5 h-3.5 text-indigo-500" />
+                                  Strategy Protocol
+                              </label>
+                              <div className="grid grid-cols-3 p-1 bg-slate-50 rounded-2xl gap-1">
+                                  {[
+                                      { id: 'GLOBAL', label: 'Global', icon: <Globe className="w-4 h-4" /> },
+                                      { id: 'HYBRID', label: 'Hybrid', icon: <Zap className="w-4 h-4" /> },
+                                      { id: 'LOCAL', label: 'Local Only', icon: <MapPin className="w-4 h-4" /> }
+                                  ].map(m => (
+                                      <button
+                                          key={m.id}
+                                          onClick={() => setMode(m.id as any)}
+                                          className={`flex flex-col items-center gap-1.5 py-3 rounded-xl transition-all ${getActiveMode() === m.id ? 'bg-white text-slate-900 shadow-md border border-slate-100' : 'text-slate-400 hover:text-slate-600'}`}
+                                      >
+                                          {m.icon}
+                                          <span className="text-[9px] font-black uppercase tracking-widest">{m.label}</span>
+                                      </button>
+                                  ))}
+                              </div>
+                          </div>
+
+                          <div className="space-y-3">
+                              <div className="flex justify-between items-center">
+                                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                                      <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                                      Strike Depth (Quantity)
+                                  </label>
+                                  <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{resultsLimit} targets</span>
+                              </div>
+                              <input 
+                                  type="range"
+                                  min="1"
+                                  max="20"
+                                  step="1"
+                                  value={resultsLimit}
+                                  onChange={(e) => onResultsLimitUpdate(parseInt(e.target.value))}
+                                  className="w-full h-1.5 bg-slate-100 rounded-full appearance-none cursor-pointer accent-indigo-600"
+                              />
+                              <div className="flex justify-between text-[8px] font-black text-slate-300 uppercase tracking-widest">
+                                  <span>Precision (1)</span>
+                                  <span>Deep Intel (20)</span>
+                              </div>
                           </div>
                       </div>
 

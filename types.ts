@@ -129,6 +129,12 @@ export interface SearchState {
   adContent?: AdUnit[];
   location?: UserLocation;
   error?: string;
+  scoutedImage?: string;
+  identification?: {
+    name: string;
+    analysis: string;
+    confidence: number;
+  };
 }
 
 export interface NetworkUser {

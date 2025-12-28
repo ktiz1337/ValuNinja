@@ -11,7 +11,13 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { analyzeProductCategory, searchProducts, identifyProductFromImage } from './services/geminiService';
 import { SearchState, AdUnit, Product, UserLocation, UserSession, NetworkUser, Briefing } from './types';
 import { NinjaIcon } from './components/NinjaIcon';
-import { ShieldCheck, Award, AlertCircle, Terminal, Activity, Zap, Cpu, Key, ExternalLink, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, Box, User, LogIn, Bookmark, LogOut, LineChart } from 'lucide-react';
+import { ShieldCheck, Award, AlertCircle, Terminal, Activity, Zap, Cpu, Key, ExternalLink, ShieldAlert, CheckCircle2, AlertTriangle, RefreshCw, Box, User, LogIn, Bookmark, LogOut, LineChart, Fingerprint } from 'lucide-react';
+
+declare global {
+  interface Window {
+    google: any;
+  }
+}
 
 type View = 'HOME' | 'PRIVACY' | 'ABOUT' | 'TERMS' | 'RESULTS' | 'ADMIN' | 'VAULT';
 
@@ -36,9 +42,24 @@ interface AffiliateConfig {
   impactId: string;
 }
 
+const parseIdentityToken = (token: string) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
 const App: React.FC = () => {
   const [view, setView] = useState<View>('HOME');
   const [showAuth, setShowAuth] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isAuthProcessing, setIsAuthProcessing] = useState(false);
   
   const [userNetwork, setUserNetwork] = useState<NetworkUser[]>([]);
   
@@ -80,6 +101,97 @@ const App: React.FC = () => {
     setLogs(prev => [newLog, ...prev].slice(0, 50));
   }, []);
 
+  const handleAuthSuccess = useCallback((user: NetworkUser) => {
+    setSession({ 
+      isLoggedIn: true, 
+      username: user.username, 
+      email: user.email,
+      rank: user.rank, 
+      vault: user.vault || [],
+      joinedAt: new Date().toISOString()
+    });
+    setShowAuth(false);
+    setIsAuthProcessing(false);
+    addLog(`Identity Sync Complete: Operative ${user.username} Active.`, 'success');
+  }, [addLog]);
+
+  const handleGoogleIdentityResponse = useCallback((response: any) => {
+    setIsAuthProcessing(true);
+    const payload = parseIdentityToken(response.credential);
+    if (payload) {
+      const user: NetworkUser = {
+        email: payload.email,
+        username: payload.name || payload.email.split('@')[0],
+        rank: 'SHADOW',
+        vault: []
+      };
+      handleAuthSuccess(user);
+    } else {
+      addLog("Identity Handshake Rejected by Provider.", "error");
+      setIsAuthProcessing(false);
+    }
+  }, [handleAuthSuccess, addLog]);
+
+  useEffect(() => {
+    const savedStats = localStorage.getItem('valuninja_stats');
+    if (savedStats) setStats(JSON.parse(savedStats));
+    const savedAffiliates = localStorage.getItem('valuninja_affiliates');
+    if (savedAffiliates) setAffiliates(JSON.parse(savedAffiliates));
+    const savedNetwork = localStorage.getItem('valuninja_network_users');
+    if (savedNetwork) setUserNetwork(JSON.parse(savedNetwork));
+    const savedSession = localStorage.getItem('valuninja_active_session');
+    
+    if (savedSession) {
+      setSession(JSON.parse(savedSession));
+    }
+
+    const initializeGSI = () => {
+      if (window.google?.accounts?.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: "703607087230-oat663p5h2v6q76u1b9q1f5g8b2m5h2q.apps.googleusercontent.com",
+            callback: handleGoogleIdentityResponse,
+            auto_select: true,
+            cancel_on_tap_outside: true
+          });
+
+          if (!savedSession) {
+            window.google.accounts.id.prompt((notification: any) => {
+               if (notification.isNotDisplayed()) {
+                  console.debug('One Tap Display Blocked:', notification.getNotDisplayedReason());
+               }
+            });
+          }
+        } catch (e) {
+          console.warn("GSI Initialization Error: Likely invalid Client ID or Domain mismatch.", e);
+        }
+      }
+    };
+
+    const gsiInterval = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        initializeGSI();
+        clearInterval(gsiInterval);
+      }
+    }, 500);
+
+    setIsInitializing(false);
+    return () => clearInterval(gsiInterval);
+  }, [handleGoogleIdentityResponse]);
+
+  useEffect(() => {
+    if (session.isLoggedIn) {
+      localStorage.setItem('valuninja_active_session', JSON.stringify(session));
+      setUserNetwork(prev => {
+        const updated = prev.some(u => u.email === session.email)
+          ? prev.map(u => u.email === session.email ? { ...u, vault: session.vault, username: session.username, rank: session.rank } : u)
+          : [...prev, { email: session.email, username: session.username, vault: session.vault, rank: session.rank }];
+        localStorage.setItem('valuninja_network_users', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  }, [session.vault, session.username, session.isLoggedIn, session.rank, session.email]);
+
   const requestLocation = useCallback((): Promise<Partial<UserLocation>> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -101,34 +213,10 @@ const App: React.FC = () => {
     });
   }, [addLog]);
 
-  useEffect(() => {
-    const savedStats = localStorage.getItem('valuninja_stats');
-    if (savedStats) setStats(JSON.parse(savedStats));
-    const savedAffiliates = localStorage.getItem('valuninja_affiliates');
-    if (savedAffiliates) setAffiliates(JSON.parse(savedAffiliates));
-    const savedNetwork = localStorage.getItem('valuninja_network_users');
-    if (savedNetwork) setUserNetwork(JSON.parse(savedNetwork));
-    const savedSession = localStorage.getItem('valuninja_active_session');
-    if (savedSession) setSession(JSON.parse(savedSession));
-  }, []);
-
-  useEffect(() => {
-    if (session.isLoggedIn) {
-      localStorage.setItem('valuninja_active_session', JSON.stringify(session));
-      setUserNetwork(prev => {
-        const updated = prev.some(u => u.email === session.email)
-          ? prev.map(u => u.email === session.email ? { ...u, vault: session.vault, username: session.username, rank: session.rank } : u)
-          : [...prev, { email: session.email, username: session.username, vault: session.vault, rank: session.rank }];
-        localStorage.setItem('valuninja_network_users', JSON.stringify(updated));
-        return updated;
-      });
-    }
-  }, [session.vault, session.username, session.isLoggedIn, session.rank]);
-
   const handleInitialSearch = async (query: string) => {
     let currentLocation = state.location;
 
-    if (!state.location.excludeRegionSpecific && !state.location.latitude) {
+    if (!state.location?.excludeRegionSpecific && !state.location?.latitude) {
       setView('RESULTS');
       setLoadingStep("Synchronizing Local Market Data...");
       const locUpdate = await requestLocation();
@@ -136,7 +224,7 @@ const App: React.FC = () => {
       setState(prev => ({ ...prev, location: currentLocation }));
     }
 
-    setState(prev => ({ ...prev, query, stage: 'ANALYZING', error: undefined, results: [], resultsLimit: 4 }));
+    setState(prev => ({ ...prev, query, stage: 'ANALYZING', error: undefined, results: [] }));
     setView('RESULTS');
     setLoadingStep("Conducting Intelligence Recon...");
     
@@ -146,7 +234,7 @@ const App: React.FC = () => {
       setState(prev => ({ ...prev, stage: 'LOADING_PRODUCTS', attributes: res.attributes, suggestions: res.suggestions, marketGuide: res.marketGuide, userValues: res.defaultValues, priceRange: res.priceRange, adContent: res.adUnits }));
       setLoadingStep("Extracting Top Targets...");
       
-      const searchRes = await searchProducts(query, res.defaultValues, currentLocation, affiliates, 4);
+      const searchRes = await searchProducts(query, res.defaultValues, currentLocation, affiliates, state.resultsLimit);
       setSummary(searchRes.summary);
       setSources(searchRes.sources);
       setState(prev => ({ ...prev, stage: 'RESULTS', results: searchRes.products }));
@@ -167,53 +255,60 @@ const App: React.FC = () => {
     }
   };
 
-  const handleExpandSearch = async () => {
-    const newLimit = state.resultsLimit + 4;
-    setState(prev => ({ ...prev, stage: 'SEARCHING', resultsLimit: newLimit }));
-    setLoadingStep(`Boosting Recon Signal... Searching for ${newLimit} targets.`);
+  /**
+   * Handles multi-stage optical sensor recon:
+   * 1. Display uploaded image and show identification phase.
+   * 2. Review picture via AI to resolve target name.
+   * 3. Initiate search based on the identified target.
+   */
+  const handlePhotoScout = async (base64Image: string) => {
+    setView('RESULTS');
+    setLoadingStep("Analyzing Visual Signal...");
+    setState(prev => ({ 
+      ...prev, 
+      stage: 'ANALYZING', 
+      error: undefined, 
+      results: [], 
+      scoutedImage: base64Image,
+      identification: undefined 
+    }));
     
     try {
-      const searchRes = await searchProducts(state.query, state.userValues, state.location, affiliates, newLimit);
+      addLog(`Optical Sensor Uploaded. Reviewing picture...`, 'info');
+      const identity = await identifyProductFromImage(base64Image);
+      
+      if (identity.name === 'Unknown Product') {
+        throw new Error("Optical sensors failed to resolve target ID.");
+      }
+
+      setState(prev => ({ ...prev, identification: identity, query: identity.name }));
+      addLog(`Target Identified: ${identity.name} (${identity.confidence}% confidence)`, 'success');
+      
+      // Pivot to search
+      await handleInitialSearch(identity.name);
+    } catch (error: any) {
+      const msg = error.message || "Vision intelligence gathering failed.";
+      addLog(`Vision Strike Aborted: ${msg}`, 'error');
+      setState(prev => ({ ...prev, stage: 'IDLE', error: `Vision Error: ${msg}`, scoutedImage: undefined }));
+    }
+  };
+
+  const handleExpandSearch = async () => {
+    const nextLimit = Math.min(state.resultsLimit + 4, 20);
+    setState(prev => ({ ...prev, resultsLimit: nextLimit, stage: 'SEARCHING' }));
+    setLoadingStep(`Expanding reconnaissance to ${nextLimit} targets...`);
+    
+    try {
+      const searchRes = await searchProducts(state.query, state.userValues, state.location, affiliates, nextLimit);
       setSummary(searchRes.summary);
       setSources(searchRes.sources);
       setState(prev => ({ ...prev, stage: 'RESULTS', results: searchRes.products }));
-      addLog(`Intel expansion complete. ${newLimit} targets now in scope.`, 'success');
-    } catch (e: any) {
-      addLog(`Intel expansion failed: ${e.message}`, 'error');
-      setState(prev => ({ ...prev, stage: 'RESULTS' }));
-    }
-  };
-
-  const handlePhotoScout = async (base64Image: string) => {
-    setState(prev => ({ ...prev, stage: 'ANALYZING', error: undefined, results: [], resultsLimit: 4 }));
-    setLoadingStep("Activating Optical Recon...");
-    setView('RESULTS');
-    
-    try {
-      const identifiedProduct = await identifyProductFromImage(base64Image);
-      if (identifiedProduct === "Unknown Product") {
-        throw new Error("Optical sensors failed to resolve target ID.");
-      }
-      addLog(`Optical Lock Confirmed: Identified ${identifiedProduct}`, 'success');
-      handleInitialSearch(identifiedProduct);
+      addLog(`Recon area expanded. ${searchRes.products.length} targets acquired.`, 'success');
     } catch (error: any) {
-      const msg = error.message || "Optical mission failed.";
-      addLog(`Optical Recon Aborted: ${msg}`, 'error');
-      setState(prev => ({ ...prev, stage: 'IDLE', error: `Mission Aborted: ${msg}` }));
+      const msg = error.message || "Intelligence expansion failed.";
+      addLog(`Expansion Aborted: ${msg}`, 'error');
+      setState(prev => ({ ...prev, stage: 'IDLE', error: msg }));
     }
-  };
-
-  const handleAuthSuccess = (user: NetworkUser) => {
-    setSession({ 
-      isLoggedIn: true, 
-      username: user.username, 
-      email: user.email,
-      rank: user.rank, 
-      vault: user.vault || [],
-      joinedAt: new Date().toISOString()
-    });
-    setShowAuth(false);
-    addLog(`Identity Sync Complete: Operative ${user.username} Active.`, 'success');
   };
 
   const handleUpdateUser = (updatedUser: NetworkUser) => {
@@ -222,7 +317,6 @@ const App: React.FC = () => {
       localStorage.setItem('valuninja_network_users', JSON.stringify(next));
       return next;
     });
-    // If the updated user is the current session user, update the session
     if (session.email === updatedUser.email) {
       setSession(prev => ({ ...prev, rank: updatedUser.rank, username: updatedUser.username }));
     }
@@ -232,6 +326,9 @@ const App: React.FC = () => {
   const handleLogout = () => {
     setSession({ isLoggedIn: false, username: 'Guest Agent', email: '', rank: 'RECRUIT', vault: [] });
     localStorage.removeItem('valuninja_active_session');
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.disableAutoSelect();
+    }
     setView('HOME');
     addLog("Session terminated. Agent Offline.", "info");
   };
@@ -246,25 +343,37 @@ const App: React.FC = () => {
     addLog(`Target secured in Arsenal: ${product.name}`, 'success');
   };
 
-  const handleSaveAllToVault = (products: Product[]) => {
-    if (!session.isLoggedIn) {
-      setShowAuth(true);
-      return;
-    }
-    const newProducts = products.filter(p => !session.vault.some(v => v.id === p.id));
-    if (newProducts.length === 0) return;
-    
-    setSession(prev => ({ 
-      ...prev, 
-      vault: [...prev.vault, ...newProducts.map(p => ({ ...p, lastPriceUpdate: new Date().toISOString() }))] 
-    }));
-    addLog(`Mass Extraction Complete: ${newProducts.length} new targets secured.`, 'success');
-  };
+  const resetSearch = () => { setView('HOME'); setState(prev => ({ ...prev, stage: 'IDLE', query: '', results: [], error: undefined, scoutedImage: undefined, identification: undefined })); };
 
-  const resetSearch = () => { setView('HOME'); setState(prev => ({ ...prev, stage: 'IDLE', query: '', results: [], error: undefined })); };
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6">
+           <div className="w-16 h-16 bg-white/5 rounded-3xl border border-white/10 flex items-center justify-center animate-pulse">
+              <NinjaIcon className="w-8 h-8 text-indigo-400" />
+           </div>
+           <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] animate-pulse">Synchronizing Intelligence Vectors...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans flex flex-col relative">
+      {isAuthProcessing && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-300">
+           <div className="bg-white p-10 rounded-[3rem] shadow-2xl flex flex-col items-center gap-6 text-center max-w-sm">
+              <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center animate-bounce shadow-xl">
+                 <Fingerprint className="w-8 h-8 text-indigo-400" />
+              </div>
+              <div>
+                 <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Identity Syncing</h3>
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Establishing Secure Handshake...</p>
+              </div>
+           </div>
+        </div>
+      )}
+
       {showAuth && (
           <AuthModal 
             onAuthComplete={handleAuthSuccess}
@@ -335,7 +444,9 @@ const App: React.FC = () => {
             onSearch={handleInitialSearch} 
             onPhotoScout={handlePhotoScout}
             isAnalyzing={state.stage === 'ANALYZING' || loadingStep === "Synchronizing Local Market Data..."} 
-            location={state.location} 
+            location={state.location || { radius: 50, excludeRegionSpecific: false, localOnly: false, zipCode: '' }} 
+            resultsLimit={state.resultsLimit}
+            onResultsLimitUpdate={(limit) => setState(p => ({ ...p, resultsLimit: limit }))}
             onLocationUpdate={(l) => setState(p => ({ ...p, location: { ...p.location, ...l } }))} 
             onLocationRequest={async () => {
               const loc = await requestLocation();
@@ -351,7 +462,6 @@ const App: React.FC = () => {
             {...state} 
             session={session}
             onSaveToVault={handleSaveToVault}
-            onSaveAllToVault={handleSaveAllToVault}
             onExpand={handleExpandSearch}
             onPhotoScout={handlePhotoScout}
             products={state.results}

@@ -1,15 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Mail, Lock, LogIn, Apple, UserPlus, AlertCircle, RefreshCw, X, ArrowLeft, Fingerprint, ShieldAlert, MailCheck, ShieldCheck, Terminal, Zap } from 'lucide-react';
+import { User, Mail, Lock, LogIn, Apple, UserPlus, AlertCircle, RefreshCw, X, ArrowLeft, Fingerprint, ShieldAlert, MailCheck, ShieldCheck, Terminal, Zap, ShieldQuestion } from 'lucide-react';
 import { NinjaIcon } from './NinjaIcon';
 import { NetworkUser } from '../types';
-
-// Fix: Declare google property on Window to support Google Identity Services global object
-declare global {
-  interface Window {
-    google: any;
-  }
-}
 
 interface AuthModalProps {
   onAuthComplete: (user: NetworkUser) => void;
@@ -19,20 +12,6 @@ interface AuthModalProps {
 }
 
 type AuthView = 'LOGIN' | 'REGISTER' | 'FORGOT_PASSWORD' | 'RESET_PASSWORD' | 'VERIFY_EMAIL';
-
-// Helper to decode Google JWT tokens without external libraries
-const parseJwt = (token: string) => {
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload);
-  } catch (e) {
-    return null;
-  }
-};
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onAuthComplete, onUpdateUser, onCancel, existingUsers }) => {
   const [view, setView] = useState<AuthView>('LOGIN');
@@ -48,66 +27,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthComplete, onUpdateUs
 
   const simulatedCode = "SCOUT-77";
 
-  // Initialize REAL Google Identity Services
   useEffect(() => {
-    const initializeGSI = () => {
-      if (typeof window.google === 'undefined') return;
-
-      // NOTE: In a production environment, 'YOUR_GOOGLE_CLIENT_ID' would be process.env.GOOGLE_CLIENT_ID
-      // For this implementation, we rely on the client being pre-configured or using a global setup.
-      window.google.accounts.id.initialize({
-        client_id: "703607087230-oat663p5h2v6q76u1b9q1f5g8b2m5h2q.apps.googleusercontent.com", // Example public client ID for testing
-        callback: handleGoogleResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-
-      if (googleBtnRef.current) {
+    if (googleBtnRef.current && window.google?.accounts?.id) {
+      try {
         window.google.accounts.id.renderButton(googleBtnRef.current, {
           type: 'standard',
           theme: 'outline',
           size: 'large',
           text: 'continue_with',
           shape: 'pill',
-          width: 400
+          width: googleBtnRef.current.offsetWidth || 350
         });
+      } catch (e) {
+        console.warn("GSI Button Render Failed:", e);
       }
-    };
-
-    // Retry initialization if script isn't loaded yet
-    const timer = setInterval(() => {
-      if (typeof window.google !== 'undefined' && window.google.accounts) {
-        initializeGSI();
-        clearInterval(timer);
-      }
-    }, 500);
-
-    return () => clearInterval(timer);
+    }
   }, [view]);
 
-  const handleGoogleResponse = (response: any) => {
+  const handleSimulatedSync = () => {
     setIsProcessing(true);
-    const payload = parseJwt(response.credential);
-    
-    if (payload) {
-      setTimeout(() => {
-        const user: NetworkUser = {
-          email: payload.email,
-          username: payload.name || payload.email.split('@')[0],
-          rank: 'SHADOW',
-          vault: []
-        };
-        onAuthComplete(user);
+    setTimeout(() => {
+        onAuthComplete({
+            email: 'operative_zero@valuninja.ai',
+            username: 'Alpha_Scout',
+            rank: 'SHINOBI',
+            vault: []
+        });
         setIsProcessing(false);
-      }, 1000);
-    } else {
-      setError("Identity synchronization failed.");
-      setIsProcessing(false);
-    }
+    }, 1200);
   };
 
   const handleAppleAuth = () => {
-    setError("Apple authentication requires domain verification. Please use Google or Shinobi credentials.");
+    setError("Apple authentication requires domain verification. Please use Google or ValuNinja credentials.");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -195,7 +146,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthComplete, onUpdateUs
 
           {(view === 'LOGIN' || view === 'REGISTER') && (
             <div className="flex flex-col gap-3 items-center">
-               <div ref={googleBtnRef} className="w-full flex justify-center"></div>
+               <div className="w-full space-y-2">
+                   <div ref={googleBtnRef} className="w-full flex justify-center min-h-[50px]"></div>
+                   <button 
+                    onClick={handleSimulatedSync}
+                    className="w-full py-3.5 bg-indigo-50 text-indigo-700 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100 hover:bg-indigo-100 transition-all flex items-center justify-center gap-2 group"
+                   >
+                      <Zap className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                      Tactical Bypass (Mock Google Sync)
+                   </button>
+               </div>
+               
                <button 
                 onClick={handleAppleAuth}
                 className="w-full flex items-center justify-center gap-4 py-3.5 bg-black text-white rounded-full hover:bg-slate-800 transition-all active:scale-[0.98] group"
@@ -209,7 +170,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onAuthComplete, onUpdateUs
           {(view === 'LOGIN' || view === 'REGISTER') && (
             <div className="flex items-center gap-4 text-slate-200">
               <div className="h-px bg-slate-100 flex-1"></div>
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Or use Ronin credentials</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Or use ValuNinja credentials</span>
               <div className="h-px bg-slate-100 flex-1"></div>
             </div>
           )}

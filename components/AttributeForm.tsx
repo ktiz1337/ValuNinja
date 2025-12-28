@@ -1,7 +1,7 @@
 
 import React, { useRef } from 'react';
 import { PriceRange, UserLocation } from '../types';
-import { Loader2, RefreshCw, DollarSign, Search, Plus, MapPin, Target, Navigation, Zap, Globe, Settings2, ShieldCheck, Crosshair, Camera } from 'lucide-react';
+import { Loader2, RefreshCw, DollarSign, Search, Plus, MapPin, Target, Navigation, Zap, Globe, Settings2, ShieldCheck, Crosshair, Camera, Layers } from 'lucide-react';
 
 interface AttributeFormProps {
   suggestions?: string[];
@@ -12,6 +12,8 @@ interface AttributeFormProps {
   isSearching: boolean;
   priceRange?: PriceRange;
   location?: UserLocation;
+  resultsLimit?: number;
+  onUpdateResultsLimit?: (limit: number) => void;
   onLocationRequest?: () => void;
   onLocationUpdate?: (loc: Partial<UserLocation>) => void;
 }
@@ -25,6 +27,8 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
   isSearching,
   priceRange,
   location,
+  resultsLimit = 4,
+  onUpdateResultsLimit,
   onLocationRequest,
   onLocationUpdate
 }) => {
@@ -201,6 +205,28 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
           </div>
 
           <div className="space-y-6">
+             {onUpdateResultsLimit && (
+               <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                          <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                          Strike Depth (Quantity)
+                      </label>
+                      <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{resultsLimit}</span>
+                  </div>
+                  <input 
+                      type="range" min="1" max="20" step="1"
+                      value={resultsLimit}
+                      onChange={(e) => onUpdateResultsLimit(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-indigo-600"
+                  />
+                  <div className="flex justify-between text-[8px] font-bold text-slate-300 uppercase tracking-widest">
+                      <span>Precision (1)</span>
+                      <span>Deep Intel (20)</span>
+                  </div>
+               </div>
+             )}
+
              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-inner">
                 <div className="flex items-center justify-between mb-4">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
