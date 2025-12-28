@@ -51,6 +51,7 @@ const parseIdentityToken = (token: string) => {
     }).join(''));
     return JSON.parse(jsonPayload);
   } catch (e) {
+    console.error("JWT Decode Error:", e);
     return null;
   }
 };
@@ -118,16 +119,17 @@ const App: React.FC = () => {
   const handleGoogleIdentityResponse = useCallback((response: any) => {
     setIsAuthProcessing(true);
     const payload = parseIdentityToken(response.credential);
-    if (payload) {
+    if (payload && payload.email) {
+      // Find existing or create new production user profile
       const user: NetworkUser = {
         email: payload.email,
-        username: payload.name || payload.email.split('@')[0],
+        username: payload.given_name || payload.name || payload.email.split('@')[0],
         rank: 'SHADOW',
         vault: []
       };
       handleAuthSuccess(user);
     } else {
-      addLog("Identity Handshake Rejected by Provider.", "error");
+      addLog("Production Identity Handshake Rejected.", "error");
       setIsAuthProcessing(false);
     }
   }, [handleAuthSuccess, addLog]);
@@ -152,18 +154,10 @@ const App: React.FC = () => {
             client_id: "703607087230-oat663p5h2v6q76u1b9q1f5g8b2m5h2q.apps.googleusercontent.com",
             callback: handleGoogleIdentityResponse,
             auto_select: true,
-            cancel_on_tap_outside: true
+            cancel_on_tap_outside: false
           });
-
-          if (!savedSession) {
-            window.google.accounts.id.prompt((notification: any) => {
-               if (notification.isNotDisplayed()) {
-                  console.debug('One Tap Display Blocked:', notification.getNotDisplayedReason());
-               }
-            });
-          }
         } catch (e) {
-          console.warn("GSI Initialization Error: Likely invalid Client ID or Domain mismatch.", e);
+          console.error("GSI Init Error:", e);
         }
       }
     };
@@ -255,12 +249,6 @@ const App: React.FC = () => {
     }
   };
 
-  /**
-   * Handles multi-stage optical sensor recon:
-   * 1. Display uploaded image and show identification phase.
-   * 2. Review picture via AI to resolve target name.
-   * 3. Initiate search based on the identified target.
-   */
   const handlePhotoScout = async (base64Image: string) => {
     setView('RESULTS');
     setLoadingStep("Analyzing Visual Signal...");
@@ -284,7 +272,6 @@ const App: React.FC = () => {
       setState(prev => ({ ...prev, identification: identity, query: identity.name }));
       addLog(`Target Identified: ${identity.name} (${identity.confidence}% confidence)`, 'success');
       
-      // Pivot to search
       await handleInitialSearch(identity.name);
     } catch (error: any) {
       const msg = error.message || "Vision intelligence gathering failed.";
