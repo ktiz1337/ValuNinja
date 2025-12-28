@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ShieldCheck, Lock, Globe, Eye, Database, Cookie, ChevronLeft } from 'lucide-react';
 
@@ -53,7 +54,7 @@ export const PrivacyPolicy: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         </section>
 
         <footer className="pt-12 border-t border-slate-100">
-          <p className="text-slate-400 text-sm italic">Last Updated: March 2025 • Protocol Version 2.1.0-STRIKE</p>
+          <p className="text-slate-400 text-sm italic">Last Updated: December 2025 • Protocol Version 2.2.0-STRIKE</p>
         </footer>
       </div>
     </div>

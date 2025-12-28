@@ -1,13 +1,14 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { PriceRange, UserLocation } from '../types';
-import { Loader2, RefreshCw, DollarSign, Search, Plus, MapPin, Target, Navigation, Zap, Globe, Settings2, ShieldCheck, Crosshair } from 'lucide-react';
+import { Loader2, RefreshCw, DollarSign, Search, Plus, MapPin, Target, Navigation, Zap, Globe, Settings2, ShieldCheck, Crosshair, Camera } from 'lucide-react';
 
 interface AttributeFormProps {
   suggestions?: string[];
   userValues: Record<string, any>;
   onUpdateValue: (key: string, value: any) => void;
   onSubmit: () => void;
+  onPhotoScout?: (base64Image: string) => void;
   isSearching: boolean;
   priceRange?: PriceRange;
   location?: UserLocation;
@@ -20,16 +21,29 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
   userValues,
   onUpdateValue,
   onSubmit,
+  onPhotoScout,
   isSearching,
   priceRange,
   location,
   onLocationRequest,
   onLocationUpdate
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const suggestedMax = priceRange ? Math.ceil(priceRange.max * 1.5) : 2000;
   const currentMin = userValues['minPrice'] || 0;
   const isUnlimited = userValues['maxPrice'] === null || userValues['maxPrice'] === undefined;
   const currentMax = isUnlimited ? suggestedMax : (userValues['maxPrice'] || suggestedMax);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        onPhotoScout?.(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const getActiveMode = () => {
     if (location?.excludeRegionSpecific) return 'GLOBAL';
@@ -192,7 +206,7 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
                     <DollarSign className="w-3.5 h-3.5 text-indigo-600" /> Price Threshold
                   </label>
-                  <button onClick={toggleUnlimited} className={`text-[9px] font-black px-3 py-1 rounded-full transition-all ${isUnlimited ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-indigo-600 border border-indigo-200'}`}>
+                  <button type="button" onClick={toggleUnlimited} className={`text-[9px] font-black px-3 py-1 rounded-full transition-all ${isUnlimited ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-indigo-600 border border-indigo-200'}`}>
                     {isUnlimited ? 'UNLIMITED' : 'SET CAP'}
                   </button>
                 </div>
@@ -248,12 +262,30 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
                   <Search className="w-3.5 h-3.5 mr-1.5 text-indigo-500" />
                   Mission Requirements (Specific Specs, Colors, Features)
               </label>
-              <textarea
-                  value={userValues['customQuery'] || ''}
-                  onChange={(e) => onUpdateValue('customQuery', e.target.value)}
-                  placeholder="e.g. Matte finish, 120Hz display, mechanical switches..."
-                  className="block w-full p-4 text-sm border-slate-200 bg-slate-50 text-slate-900 rounded-2xl min-h-[120px] resize-none font-bold placeholder:font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-inner"
-              />
+              <div className="relative">
+                <textarea
+                    value={userValues['customQuery'] || ''}
+                    onChange={(e) => onUpdateValue('customQuery', e.target.value)}
+                    placeholder="e.g. Matte finish, 120Hz display, mechanical switches..."
+                    className="block w-full p-4 pr-16 text-sm border-slate-200 bg-slate-50 text-slate-900 rounded-2xl min-h-[120px] resize-none font-bold placeholder:font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all shadow-inner"
+                />
+                <button 
+                  type="button" 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute right-3 bottom-3 p-3 bg-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-200 transition-all active:scale-95"
+                  title="Optical Re-Scan"
+                >
+                  <Camera className="w-5 h-5" />
+                </button>
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    className="hidden" 
+                    accept="image/*" 
+                    capture="environment"
+                />
+              </div>
           </div>
 
           {suggestions.length > 0 && (
@@ -269,6 +301,7 @@ export const AttributeForm: React.FC<AttributeFormProps> = ({
 
       <div className="flex flex-col md:flex-row items-center gap-6 pt-6">
         <button
+          type="button"
           onClick={onSubmit}
           disabled={isSearching}
           className="flex items-center justify-center w-full md:w-auto px-12 py-5 border border-transparent text-sm font-black rounded-2xl text-white bg-slate-900 hover:bg-slate-800 transition-all shadow-2xl hover:-translate-y-1 active:translate-y-0 disabled:opacity-50 tracking-widest uppercase"

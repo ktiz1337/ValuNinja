@@ -1,3 +1,4 @@
+
 export interface RetailerLink {
   name: string;
   url: string;
@@ -11,21 +12,27 @@ export interface UserLocation {
   zipCode?: string;
   address?: string;
   excludeRegionSpecific?: boolean; 
-  radius?: number; // Search radius in km
-  localOnly?: boolean; // Toggle for "Local Pickup Only"
+  radius?: number; 
+  localOnly?: boolean; 
 }
 
 export interface ValueBreakdown {
-  performance: number;      // 1-10
-  buildQuality: number;     // 1-10
-  featureSet: number;       // 1-10
-  reliability: number;      // 1-10
-  userSatisfaction: number; // 1-10
-  efficiency: number;       // 1-10
-  innovation: number;       // 1-10
-  longevity: number;        // 1-10
-  ergonomics: number;       // 1-10
-  dealStrength: number;     // 1-10
+  performance: number;
+  buildQuality: number;
+  featureSet: number;
+  reliability: number;
+  userSatisfaction: number;
+  efficiency: number;
+  innovation: number;
+  longevity: number;
+  ergonomics: number;
+  dealStrength: number;
+}
+
+export interface PricePoint {
+  date: string;
+  price: number;
+  store?: string;
 }
 
 export interface Product {
@@ -49,9 +56,12 @@ export interface Product {
   isLocal?: boolean;
   distance?: string;
   storeName?: string; 
-  valueScore?: number; // 1-100 total (Sum of breakdown)
+  valueScore?: number; 
   valueBreakdown?: ValueBreakdown;
-  directUrl?: string; // Direct retailer/product page URL if verified
+  directUrl?: string;
+  lastPriceUpdate?: string;
+  previousPrice?: number;
+  priceHistory?: PricePoint[];
 }
 
 export enum AttributeType {
@@ -84,6 +94,27 @@ export interface AdUnit {
   brand: string;
 }
 
+export interface UserSession {
+  isLoggedIn: boolean;
+  username: string;
+  email: string;
+  rank: 'RECRUIT' | 'SHADOW' | 'ELITE' | 'SHINOBI';
+  vault: Product[];
+  joinedAt?: string;
+}
+
+export interface Briefing {
+  overview: string;
+  deepDive: string;
+  checklist: string[];
+}
+
+export interface MarketIntel {
+  expertAdvice: string;
+  technicalDepth: string;
+  keyDifferentiators: string[];
+}
+
 export interface SearchState {
   query: string;
   stage: 'IDLE' | 'ANALYZING' | 'LOADING_PRODUCTS' | 'SEARCHING' | 'RESULTS';
@@ -92,8 +123,24 @@ export interface SearchState {
   userValues: Record<string, any>;
   priceRange?: PriceRange;
   results: Product[];
-  marketGuide?: string;
+  resultsLimit: number;
+  summary?: Briefing;
+  marketGuide?: MarketIntel;
   adContent?: AdUnit[];
   location?: UserLocation;
   error?: string;
+}
+
+export interface NetworkUser {
+  username: string;
+  email: string;
+  password?: string;
+  vault: Product[];
+  rank: UserSession['rank'];
+}
+
+export interface AdminConfig {
+  thinkingBudget: number;
+  systemDirective: string;
+  modelSelection: 'gemini-3-pro-preview' | 'gemini-3-flash-preview';
 }
